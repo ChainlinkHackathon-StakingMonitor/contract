@@ -11,7 +11,7 @@ def test_can_get_latest_price():
     # Arrange
     address = get_contract("eth_usd_price_feed").address
     # StakingMonitor
-    staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
+    staking_monitor = deploy_staking_monitor()
     # Assert
     value = staking_monitor.getPrice({"from": get_account()})
     assert isinstance(value, int)
@@ -50,3 +50,26 @@ def test_can_set_price_limit():
 #
 #     with pytest.raises(exceptions.VirtualMachineError):
 #         staking_monitor.setPriceBounds(lower_bound, upper_bound, {"from": account})
+
+
+def test_can_get_latest_price():
+    # Arrange
+
+    # Act
+    staking_monitor = deploy_staking_monitor()
+    # Assert
+    value = staking_monitor.getPrice({"from": get_account()})
+    assert isinstance(value, int)
+    assert value > 0
+
+
+def test_can_call_check_upkeep():
+    # Arrange
+    account = get_account()
+    staking_monitor = deploy_staking_monitor()
+    upkeepNeeded, performData = staking_monitor.checkUpkeep.call(
+        "",
+        {"from": account},
+    )
+    assert isinstance(upkeepNeeded, bool)
+    assert isinstance(performData, bytes)
