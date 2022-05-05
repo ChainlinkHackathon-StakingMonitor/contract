@@ -30,27 +30,23 @@ def test_deposit():
     assert staking_monitor.s_userInfos(account.address)[0] == value
 
 
-def test_can_set_price_bounds():
+def test_can_set_price_limit():
     account = get_account()
     staking_monitor = deploy_staking_monitor()
-    upper_bound = 30000000000
-    lower_bound = 25000000000
+    price_limit = 30000000000
 
-    price_bound_tx = staking_monitor.setPriceBounds(
-        upper_bound, lower_bound, {"from": account}
-    )
+    price_bound_tx = staking_monitor.setPriceLimit(price_limit, {"from": account})
 
     price_bound_tx.wait(1)
 
     assert staking_monitor.s_userInfos(account.address)[2] == Web3.toWei(3, "ether")
-    assert staking_monitor.s_userInfos(account.address)[3] == Web3.toWei(2.5, "ether")
 
 
-def test_should_throw_error_if_price_mismatch():
-    account = get_account()
-    staking_monitor = deploy_staking_monitor()
-    upper_bound = 30000000000
-    lower_bound = 25000000000
-
-    with pytest.raises(exceptions.VirtualMachineError):
-        staking_monitor.setPriceBounds(lower_bound, upper_bound, {"from": account})
+# def test_should_throw_error_if_price_mismatch():
+#     account = get_account()
+#     staking_monitor = deploy_staking_monitor()
+#     upper_bound = 30000000000
+#     lower_bound = 25000000000
+#
+#     with pytest.raises(exceptions.VirtualMachineError):
+#         staking_monitor.setPriceBounds(lower_bound, upper_bound, {"from": account})

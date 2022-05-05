@@ -10,9 +10,8 @@ error StakingMonitor__UpperBond_SmallerThan_LowerBound();
 
 struct userInfo {
     uint256 balance;
-    uint256 DAIBalance;
-    uint256 priceUpperBound;
-    uint256 priceLowerBound;
+    uint256 tokenSymbol;
+    uint256 priceLimit;
 }
 
 contract StakingMonitor {
@@ -21,8 +20,7 @@ contract StakingMonitor {
     event Deposited(address indexed user);
     AggregatorV3Interface public priceFeed;
 
-    uint256 public s_lowestUpperBound;
-    uint256 public s_highestLowerBound;
+    uint256 public s_lowestPriceLimit;
 
     constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -41,39 +39,20 @@ contract StakingMonitor {
         emit Deposited(msg.sender);
     }
 
-    function setPriceBounds(uint256 _priceUpperBound, uint256 _priceLowerBound)
-        external
-    {
-        if (_priceUpperBound < _priceLowerBound) {
-            revert StakingMonitor__UpperBond_SmallerThan_LowerBound();
-        }
+    function setPriceLimit(uint256 _priceLimit) external {
+        _priceLimit = _priceLimit * 100000000;
 
-        _priceLowerBound = _priceLowerBound * 100000000;
-        _priceUpperBound = _priceUpperBound * 100000000;
+        s_userInfos[msg.sender].priceLimit = _priceLimit;
 
-        s_userInfos[msg.sender].priceUpperBound = _priceUpperBound;
-        s_userInfos[msg.sender].priceLowerBound = _priceLowerBound;
-
-        // set lowest upper bound
-        if (
-            (s_lowestUpperBound == 0) || (s_lowestUpperBound > _priceUpperBound)
-        ) {
-            s_lowestUpperBound = _priceUpperBound;
-        }
-
-        // set highest lower bound
-        if (
-            (s_highestLowerBound == 0) ||
-            (s_highestLowerBound < _priceLowerBound)
-        ) {
-            s_highestLowerBound = _priceLowerBound;
+        // set lowest price limit
+        if ((s_lowestPriceLimit == 0) || (s_lowestPriceLimit > _priceLimit)) {
+            s_lowestPriceLimit = _priceLimit;
         }
     }
 
     function calculatePriceRange() public view returns (bool) {
         uint price = getPrice();
-        bool upkeepNeeded = (price < s_lowestUpperBound &&
-            price > s_highestLowerBound);
+        bool upkeepNeeded = (price > s_lowestPriceLimit);
         return upkeepNeeded;
     }
 
@@ -88,9 +67,8 @@ contract StakingMonitor {
         )
     {
         // upkeepNeeded: if price between one of the brackets
-        uint price = getPrice();
-        upkeepNeeded = (price < s_lowestUpperBound &&
-            price > s_highestLowerBound);
+        //uint price = getPrice();
+        upkeepNeeded = calculatePriceRange();
         return (upkeepNeeded, "0x0");
     }
 
