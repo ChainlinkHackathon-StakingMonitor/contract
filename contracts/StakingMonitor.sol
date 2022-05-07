@@ -47,8 +47,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
             revert StakeMonitor__UserHasntDepositedETH();
         }
 
-        // we multiply the price limit so that it matches the decimals of the price value returned by getPrice()
-        _priceLimit = _priceLimit * 100000000;
         s_userInfos[msg.sender].priceLimit = _priceLimit;
 
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
