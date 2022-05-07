@@ -8,6 +8,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
 error StakingMonitor__UpperBond_SmallerThan_LowerBound();
+error StakeMonitor__UserHasntDepositedETH();
 
 struct userInfo {
     uint256 balance;
@@ -41,11 +42,16 @@ contract StakingMonitor is KeeperCompatibleInterface {
     }
 
     function setPriceLimit(uint256 _priceLimit) external {
-        _priceLimit = _priceLimit * 100000000;
+        // a user cannot set a price limit if they haven't deposited some eth
+        if (s_userInfos[msg.sender].balance == 0) {
+            revert StakeMonitor__UserHasntDepositedETH();
+        }
 
+        // we multiply the price limit so that it matches the decimals of the price value returned by getPrice()
+        _priceLimit = _priceLimit * 100000000;
         s_userInfos[msg.sender].priceLimit = _priceLimit;
 
-        // set lowest price limit
+        // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
         if ((s_lowestPriceLimit == 0) || (s_lowestPriceLimit > _priceLimit)) {
             s_lowestPriceLimit = _priceLimit;
         }
