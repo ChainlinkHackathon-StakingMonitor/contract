@@ -39,6 +39,12 @@ contract StakingMonitor is KeeperCompatibleInterface {
     }
 
     function deposit() external payable {
+        // when user deposits the first time, we set last balance to their current balance...
+        // not sure that's the best logic but let's see
+        if (s_userInfos[msg.sender].depositBalance == 0) {
+            s_userInfos[msg.sender].latestBalance = msg.sender.balance;
+        }
+
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
         s_userInfos[msg.sender].depositBalance =

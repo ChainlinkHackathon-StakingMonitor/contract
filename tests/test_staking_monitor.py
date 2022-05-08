@@ -71,9 +71,25 @@ def test_set_balances_to_spend():
     account = get_account()
     address = get_contract("eth_usd_price_feed").address
     staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    # assert account.balance() == 100000000000000000000
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
     deposit_tx.wait(1)
+    assert account.balance() == 99990000000000000000
+    assert staking_monitor.s_userInfos(account.address)[4] == 99990000000000000000
+
+    account_1 = get_account(1)
+    account_1.transfer(account, "10 ether")
+    # assert account.balance() == 109990000000000000000
+
+    tx = staking_monitor.setBalancesToSpend()
+    tx.wait(1)
+    watch_list_entry_for_address = staking_monitor.s_watchList(0)
+    assert watch_list_entry_for_address == account.address
+    assert (
+        staking_monitor.s_userInfos(watch_list_entry_for_address)[3]
+        == 10000000000000000000
+    )
 
     # Act
 
