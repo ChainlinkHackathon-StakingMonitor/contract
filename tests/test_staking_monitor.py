@@ -29,11 +29,12 @@ def test_deposit():
     deposit_tx_1 = staking_monitor.deposit({"from": get_account(1), "value": value_1})
     deposit_tx_1.wait(1)
 
-    # returns tuple
+    # check that the balance has increased by the amount of the deposit
     assert staking_monitor.s_userInfos(get_account().address)[0] == value
     # check if address is added to watchlist
     assert staking_monitor.s_watchList(0) == get_account().address
 
+    # check that the balance has increased by the amount of the deposit
     assert staking_monitor.s_userInfos(get_account(1).address)[0] == value_1
     # check if address is added to watchlist
     assert staking_monitor.s_watchList(1) == get_account(1).address
