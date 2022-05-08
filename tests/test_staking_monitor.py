@@ -29,6 +29,20 @@ def test_deposit():
     assert staking_monitor.s_userInfos(get_account().address)[0] == value
 
 
+def test_get_balance():
+    # Arrange
+    address = get_contract("eth_usd_price_feed").address
+    staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
+    value = Web3.toWei(0.01, "ether")
+    # Act
+    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx.wait(1)
+
+    # returns tuple
+    balance = staking_monitor.getBalance({"from": get_account()})
+    assert balance == value
+
+
 def test_set_price_limit_if_user_has_not_deposited_reverts():
     # Arrange
     account = get_account()

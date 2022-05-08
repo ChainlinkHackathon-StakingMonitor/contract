@@ -4,6 +4,8 @@ pragma abicoder v2;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/UniswapV2RouterInterface.sol";
 
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
@@ -12,8 +14,9 @@ error StakeMonitor__UserHasntDepositedETH();
 
 struct userInfo {
     uint256 balance;
-    uint256 tokenSymbol;
+    uint256 DAIBalance;
     uint256 priceLimit;
+    uint256 timeInterval;
 }
 
 contract StakingMonitor is KeeperCompatibleInterface {
@@ -23,6 +26,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
+    uint256 public lastTimeStamp;
 
     constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -41,6 +45,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
         emit Deposited(msg.sender);
     }
 
+    function getBalance() external view returns (uint256) {
+        return s_userInfos[msg.sender].balance;
+    }
+
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
         if (s_userInfos[msg.sender].balance == 0) {
@@ -55,9 +63,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
-    function calculatePriceRange() public view returns (bool) {
+    function checkLowestLimitUnderCurrentPrice() public view returns (bool) {
         uint price = getPrice();
-        bool upkeepNeeded = (price > s_lowestPriceLimit);
+        bool upkeepNeeded = (s_lowestPriceLimit < price);
         return upkeepNeeded;
     }
 
@@ -66,7 +74,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        upkeepNeeded = calculatePriceRange();
+        upkeepNeeded = checkLowestLimitUnderCurrentPrice();
 
         // We don't use the checkData in this example
         // checkData was defined when the Upkeep was registered
