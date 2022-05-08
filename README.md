@@ -1,7 +1,8 @@
 # Staking Monitor Contract
-based on chainlink-mix
 
-![staking_monitor_wireframe](https://user-images.githubusercontent.com/28725039/167314541-75e86761-3026-4b33-b77a-c8376f242d47.png)
+![staking_monitor_ui](https://user-images.githubusercontent.com/28725039/167316963-06d7023d-4e82-4a96-9c43-b5f0e528303f.png)
+
+
 
 This is a repo to work with and use Chainlink smart contracts in a python environment. If you're brand new to Chainlink, check out the beginner walk-through in remix to [learn the basics.](https://docs.chain.link/docs/beginners-tutorial)
 
