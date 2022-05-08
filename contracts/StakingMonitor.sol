@@ -13,20 +13,21 @@ error StakingMonitor__UpperBond_SmallerThan_LowerBound();
 error StakeMonitor__UserHasntDepositedETH();
 
 struct userInfo {
-    uint256 balance;
+    uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
-    uint256 timeInterval;
+    uint256 balanceToSpend;
+    uint256 latestBalance;
 }
 
 contract StakingMonitor is KeeperCompatibleInterface {
     mapping(address => userInfo) public s_userInfos;
-    address[] s_addresses;
     event Deposited(address indexed user);
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
+    address[] private watchList;
 
     constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -38,20 +39,28 @@ contract StakingMonitor is KeeperCompatibleInterface {
     }
 
     function deposit() external payable {
-        s_userInfos[msg.sender].balance =
-            s_userInfos[msg.sender].balance +
+        s_userInfos[msg.sender].depositBalance =
+            s_userInfos[msg.sender].depositBalance +
             msg.value;
-        s_addresses.push(msg.sender);
+        //TODO: somehow check if address is already watched
+        watchList.push(msg.sender);
+        emit Deposited(msg.sender);
+    }
+
+    function withdrawETH() external payable {
+        s_userInfos[msg.sender].depositBalance =
+            s_userInfos[msg.sender].depositBalance +
+            msg.value;
         emit Deposited(msg.sender);
     }
 
     function getBalance() external view returns (uint256) {
-        return s_userInfos[msg.sender].balance;
+        return s_userInfos[msg.sender].depositBalance;
     }
 
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
-        if (s_userInfos[msg.sender].balance == 0) {
+        if (s_userInfos[msg.sender].depositBalance == 0) {
             revert StakeMonitor__UserHasntDepositedETH();
         }
 
@@ -60,6 +69,14 @@ contract StakingMonitor is KeeperCompatibleInterface {
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
         if ((s_lowestPriceLimit == 0) || (s_lowestPriceLimit > _priceLimit)) {
             s_lowestPriceLimit = _priceLimit;
+        }
+    }
+
+    function setBalancesToSpend() external {
+        for (uint256 idx = 0; idx < watchList.length; idx++) {
+            // for each address in the watchlist, we check if the balance has increased. If so, we are allowed to spend the difference between the new balance and the old one
+            s_userInfos[watchList[idx]].balanceToSpend = (watchList[idx]
+                .balance - s_userInfos[watchList[idx]].latestBalance);
         }
     }
 
