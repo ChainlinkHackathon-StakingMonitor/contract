@@ -30,12 +30,14 @@ def test_deposit():
     deposit_tx_1.wait(1)
 
     # check that the balance has increased by the amount of the deposit
-    assert staking_monitor.s_userInfos(get_account().address)[0] == value
+    assert staking_monitor.s_userInfos(get_account().address)["depositBalance"] == value
     # check if address is added to watchlist
     assert staking_monitor.s_watchList(0) == get_account().address
 
     # check that the balance has increased by the amount of the deposit
-    assert staking_monitor.s_userInfos(get_account(1).address)[0] == value_1
+    assert (
+        staking_monitor.s_userInfos(get_account(1).address)["depositBalance"] == value_1
+    )
     # check if address is added to watchlist
     assert staking_monitor.s_watchList(1) == get_account(1).address
 
@@ -75,8 +77,11 @@ def test_set_balances_to_spend():
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
     deposit_tx.wait(1)
-    assert account.balance() == 99990000000000000000
-    assert staking_monitor.s_userInfos(account.address)[4] == 99990000000000000000
+    assert account.balance() == 99970000000000000000
+    assert (
+        staking_monitor.s_userInfos(account.address)["latestBalance"]
+        == 99970000000000000000
+    )
 
     account_1 = get_account(1)
     account_1.transfer(account, "10 ether")
@@ -87,7 +92,7 @@ def test_set_balances_to_spend():
     watch_list_entry_for_address = staking_monitor.s_watchList(0)
     assert watch_list_entry_for_address == account.address
     assert (
-        staking_monitor.s_userInfos(watch_list_entry_for_address)[3]
+        staking_monitor.s_userInfos(watch_list_entry_for_address)["balanceToSpend"]
         == 10000000000000000000
     )
 
