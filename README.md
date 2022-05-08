@@ -1,13 +1,13 @@
 # Staking Monitor Contract
 
-![staking_monitor_ui](https://user-images.githubusercontent.com/28725039/167317004-461db659-8e99-4be8-b624-99461552da3e.png)
+![staking_monitor_ui](./img/staking_monitor_ui.png)
 
 
 This is a repo to work with and use Chainlink smart contracts in a python environment. If you're brand new to Chainlink, check out the beginner walk-through in remix to [learn the basics.](https://docs.chain.link/docs/beginners-tutorial)
 
 You can also check out the more advanced Chainlink tutorials there as well.
 
-- [chainlink-mix](#chainlink-mix)
+- [Staking Monitor Contract](#staking-monitor-contract)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Testnet Development](#testnet-development)
