@@ -22,11 +22,21 @@ def test_deposit():
     staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
     value = Web3.toWei(0.01, "ether")
     # Act
-    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
-    deposit_tx.wait(1)
+    deposit_tx_0 = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx_0.wait(1)
+
+    value_1 = Web3.toWei(0.03, "ether")
+    deposit_tx_1 = staking_monitor.deposit({"from": get_account(1), "value": value_1})
+    deposit_tx_1.wait(1)
 
     # returns tuple
     assert staking_monitor.s_userInfos(get_account().address)[0] == value
+    # check if address is added to watchlist
+    assert staking_monitor.s_watchList(0) == get_account().address
+
+    assert staking_monitor.s_userInfos(get_account(1).address)[0] == value_1
+    # check if address is added to watchlist
+    assert staking_monitor.s_watchList(1) == get_account(1).address
 
 
 def test_get_balance():
@@ -53,6 +63,20 @@ def test_set_price_limit_if_user_has_not_deposited_reverts():
     with pytest.raises(exceptions.VirtualMachineError):
         price_limit_tx = staking_monitor.setPriceLimit(price_limit, {"from": account})
         price_limit_tx.wait(1)
+
+
+def test_set_balances_to_spend():
+    # Arrange
+    account = get_account()
+    address = get_contract("eth_usd_price_feed").address
+    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    value = Web3.toWei(0.01, "ether")
+    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx.wait(1)
+
+    # Act
+
+    # Assert
 
 
 def test_can_set_price_limit():

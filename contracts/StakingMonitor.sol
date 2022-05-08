@@ -27,7 +27,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
 
     uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
-    address[] private watchList;
+    address[] public s_watchList;
 
     constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -39,11 +39,11 @@ contract StakingMonitor is KeeperCompatibleInterface {
     }
 
     function deposit() external payable {
+        //TODO: somehow check if address is already watched
+        s_watchList.push(msg.sender);
         s_userInfos[msg.sender].depositBalance =
             s_userInfos[msg.sender].depositBalance +
             msg.value;
-        //TODO: somehow check if address is already watched
-        watchList.push(msg.sender);
         emit Deposited(msg.sender);
     }
 
@@ -73,10 +73,11 @@ contract StakingMonitor is KeeperCompatibleInterface {
     }
 
     function setBalancesToSpend() external {
-        for (uint256 idx = 0; idx < watchList.length; idx++) {
-            // for each address in the watchlist, we check if the balance has increased. If so, we are allowed to spend the difference between the new balance and the old one
-            s_userInfos[watchList[idx]].balanceToSpend = (watchList[idx]
-                .balance - s_userInfos[watchList[idx]].latestBalance);
+        for (uint256 idx = 0; idx < s_watchList.length; idx++) {
+            // for each address in the watchlist, we check if the balance has increased.
+            // if so, we are allowed to spend the difference between the new balance and the old one
+            s_userInfos[s_watchList[idx]].balanceToSpend = (s_watchList[idx]
+                .balance - s_userInfos[s_watchList[idx]].latestBalance);
         }
     }
 
