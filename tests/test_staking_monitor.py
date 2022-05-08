@@ -70,17 +70,17 @@ def test_set_price_limit_if_user_has_not_deposited_reverts():
 
 def test_set_balances_to_spend():
     # Arrange
-    account = get_account()
+    account = get_account(2)
     address = get_contract("eth_usd_price_feed").address
     staking_monitor = StakingMonitor.deploy(address, {"from": account})
-    # assert account.balance() == 100000000000000000000
+    assert account.balance() == 100000000000000000000
     value = Web3.toWei(0.01, "ether")
-    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx = staking_monitor.deposit({"from": get_account(2), "value": value})
     deposit_tx.wait(1)
-    assert account.balance() == 99970000000000000000
+    assert account.balance() == 99990000000000000000
     assert (
         staking_monitor.s_userInfos(account.address)["latestBalance"]
-        == 99970000000000000000
+        == 99990000000000000000
     )
 
     account_1 = get_account(1)
