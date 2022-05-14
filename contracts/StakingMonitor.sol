@@ -53,10 +53,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
         emit Deposited(msg.sender);
     }
 
-    function withdrawETH() external payable {
+    function withdrawETH(uint256 _amount) external {
         s_userInfos[msg.sender].depositBalance =
-            s_userInfos[msg.sender].depositBalance +
-            msg.value;
+            s_userInfos[msg.sender].depositBalance -
+            _amount;
         emit Deposited(msg.sender);
     }
 
@@ -71,7 +71,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
 
         s_userInfos[msg.sender].priceLimit = _priceLimit;
+        setLowestPriceLimit(_priceLimit);
+    }
 
+    function setLowestPriceLimit(uint256 _priceLimit) internal {
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
         if ((s_lowestPriceLimit == 0) || (s_lowestPriceLimit > _priceLimit)) {
             s_lowestPriceLimit = _priceLimit;
