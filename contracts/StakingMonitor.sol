@@ -25,15 +25,21 @@ contract StakingMonitor is KeeperCompatibleInterface {
     mapping(address => userInfo) public s_userInfos;
     event Deposited(address indexed user);
     AggregatorV3Interface public priceFeed;
+    IERC20 public DAIToken;
 
     uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
     uint256 public immutable interval;
     address[] public s_watchList;
 
-    constructor(address _priceFeed) {
+    constructor(
+        address _priceFeed,
+        address _DAIToken,
+        uint256 _interval
+    ) {
         priceFeed = AggregatorV3Interface(_priceFeed);
-        interval = 3 hours;
+        DAIToken = IERC20(_DAIToken);
+        interval = _interval;
         lastTimeStamp = block.timestamp;
     }
 
@@ -41,6 +47,8 @@ contract StakingMonitor is KeeperCompatibleInterface {
         (, int256 answer, , , ) = priceFeed.latestRoundData();
         return uint256(answer);
     }
+
+    function getTotalDAIBalance() public view returns (uint256) {}
 
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...

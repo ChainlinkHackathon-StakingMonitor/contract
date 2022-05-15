@@ -3,11 +3,12 @@ from brownie import (
     accounts,
     config,
     LinkToken,
+    DAIToken,
     MockV3Aggregator,
     MockOracle,
     VRFCoordinatorMock,
     Contract,
-    web3
+    web3,
 )
 import time
 
@@ -22,6 +23,7 @@ BLOCK_CONFIRMATIONS_FOR_VERIFICATION = 6
 
 contract_to_mock = {
     "link_token": LinkToken,
+    "dai_token": DAIToken,
     "eth_usd_price_feed": MockV3Aggregator,
     "vrf_coordinator": VRFCoordinatorMock,
     "oracle": MockOracle,
@@ -149,4 +151,4 @@ def listen_for_event(brownie_contract, event, timeout=200, poll_interval=2):
         time.sleep(poll_interval)
         current_time = time.time()
     print("Timeout reached, no event found.")
-    return { "event": None }
+    return {"event": None}

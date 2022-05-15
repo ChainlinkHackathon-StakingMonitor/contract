@@ -5,10 +5,28 @@ from scripts.helpful_scripts import get_account, get_contract
 from web3 import Web3
 
 
-def test_can_get_latest_price():
+@pytest.fixture
+def deploy_staking_monitor_contract():
+    # Arrange / Act
+    interval = 3 * 60  # 3 minutes in seconds
+    staking_monitor = StakingMonitor.deploy(
+        get_contract("eth_usd_price_feed").address,
+        get_contract("dai_token").address,
+        interval,
+        {"from": get_account()},
+    )
+    block_confirmations = 6
+    if network.show_active() in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        block_confirmations = 1
+    staking_monitor.tx.wait(block_confirmations)
+    # Assert
+    assert staking_monitor is not None
+    return staking_monitor
+
+
+def test_can_get_latest_price(deploy_staking_monitor_contract):
     # Arrange
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
+    staking_monitor = deploy_staking_monitor_contract()
     # Act
     value = staking_monitor.getPrice({"from": get_account()})
     # Assert
@@ -16,10 +34,9 @@ def test_can_get_latest_price():
     assert value > 0
 
 
-def test_deposit():
+def test_deposit(deploy_staking_monitor_contract):
     # Arrange
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
+    staking_monitor = deploy_staking_monitor_contract()
     value = Web3.toWei(0.01, "ether")
     # Act
     deposit_tx_0 = staking_monitor.deposit({"from": get_account(), "value": value})

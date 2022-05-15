@@ -28,6 +28,7 @@ networks:
   kovan:
     vrf_coordinator: "0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9"
     link_token: "0xa36085F69e2889c224210F603D836748e7dC0088"
+    dai_token: "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
     keyhash: "0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4"
     fee: 100000000000000000
     oracle: "0xc57b33452b4f7bb189bb5afae9cc4aba1f7a4fd8"
@@ -45,6 +46,7 @@ networks:
   rinkeby:
     vrf_coordinator: "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B"
     link_token: "0x01be23585060835e02b77ef475b0cc51aa1e0709"
+    dai_token: "0x95b58a6Bff3D14B7DB2f5cb5F0Ad413DC2940658"
     keyhash: "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
     fee: 100000000000000000
     oracle: "0xc57b33452b4f7bb189bb5afae9cc4aba1f7a4fd8"
@@ -54,12 +56,14 @@ networks:
     verify: True
   fuji:
     link_token: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846"
+    dai_token: "0xbA7dEebBFC5fA1100Fb055a87773e1E99Cd3507a"
     fee: 100000000000000000
     oracle: "0xcc80934eaf22b2c8dbf7a69e8e0d356a7cac5754"
     jobId: "5ca4fa9b2d64462290abfbda84e38cf4"
   mumbai:
     eth_usd_price_feed: "0x0715A7794a1dc8e42615F059dD6e406A6594651A"
     link_token: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB"
+    dai_token: "0xd393b1E02dA9831Ff419e22eA105aAe4c47E1253"
     vrf_coordinator: "0x8C7382F9D8f56b33781fE506E897a4F1e2d17255"
     keyhash: "0x6e75b569a01ef56d18cab6a8e71e6600d6ce853834d4a5748b720d06f878b3a4"
     fee: 1000000000000000000
