@@ -1,7 +1,11 @@
-from brownie import exceptions, StakingMonitor
+from brownie import exceptions, StakingMonitor, network
 import pytest
 
-from scripts.helpful_scripts import get_account, get_contract
+from scripts.helpful_scripts import (
+    get_account,
+    get_contract,
+    LOCAL_BLOCKCHAIN_ENVIRONMENTS,
+)
 from web3 import Web3
 
 
@@ -26,7 +30,7 @@ def deploy_staking_monitor_contract():
 
 def test_can_get_latest_price(deploy_staking_monitor_contract):
     # Arrange
-    staking_monitor = deploy_staking_monitor_contract()
+    staking_monitor = deploy_staking_monitor_contract
     # Act
     value = staking_monitor.getPrice({"from": get_account()})
     # Assert
@@ -36,7 +40,7 @@ def test_can_get_latest_price(deploy_staking_monitor_contract):
 
 def test_deposit(deploy_staking_monitor_contract):
     # Arrange
-    staking_monitor = deploy_staking_monitor_contract()
+    staking_monitor = deploy_staking_monitor_contract
     value = Web3.toWei(0.01, "ether")
     # Act
     deposit_tx_0 = staking_monitor.deposit({"from": get_account(), "value": value})
@@ -59,10 +63,9 @@ def test_deposit(deploy_staking_monitor_contract):
     assert staking_monitor.s_watchList(1) == get_account(1).address
 
 
-def test_get_deposit_balance():
+def test_get_deposit_balance(deploy_staking_monitor_contract):
     # Arrange
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
+    staking_monitor = deploy_staking_monitor_contract
     value = Web3.toWei(0.01, "ether")
     # Act
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
@@ -73,23 +76,24 @@ def test_get_deposit_balance():
     assert balance == value
 
 
-def test_set_price_limit_if_user_has_not_deposited_reverts():
+def test_set_price_limit_if_user_has_not_deposited_reverts(
+    deploy_staking_monitor_contract,
+):
     # Arrange
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     price_limit = 30000000000
     # Act & Assert
     with pytest.raises(exceptions.VirtualMachineError):
-        price_limit_tx = staking_monitor.setOrder(price_limit, 40, {"from": account})
+        price_limit_tx = staking_monitor.setOrder(
+            price_limit, 40, {"from": get_account()}
+        )
         price_limit_tx.wait(1)
 
 
-def test_set_balances_to_swap():
+def test_set_balances_to_swap(deploy_staking_monitor_contract):
     # Arrange
     account = get_account(2)
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     assert account.balance() == 100000000000000000000
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(2), "value": value})
@@ -118,11 +122,9 @@ def test_set_balances_to_swap():
     # Assert
 
 
-def test_can_set_order():
+def test_can_set_order(deploy_staking_monitor_contract):
     # Arrange
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
     deposit_tx.wait(1)
@@ -131,28 +133,30 @@ def test_can_set_order():
     percentage_to_swap = 40
     # Act
     price_bound_tx = staking_monitor.setOrder(
-        price_limit, percentage_to_swap, {"from": account}
+        price_limit, percentage_to_swap, {"from": get_account()}
     )
     price_bound_tx.wait(1)
     # Assert
-    assert staking_monitor.s_userInfos(account.address)["priceLimit"] == price_limit
     assert (
-        staking_monitor.s_userInfos(account.address)["percentageToSwap"]
+        staking_monitor.s_userInfos(get_account().address)["priceLimit"] == price_limit
+    )
+    assert (
+        staking_monitor.s_userInfos(get_account().address)["percentageToSwap"]
         == percentage_to_swap
     )
 
 
-def test_setting_the_lowest_price_limit_sets_lower_price_limit():
+def test_setting_the_lowest_price_limit_sets_lower_price_limit(
+    deploy_staking_monitor_contract,
+):
     # Arrange
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
     deposit_tx.wait(1)
     price_limit = staking_monitor.getPrice({"from": get_account()}) - 1000
     # Act
-    price_bound_tx = staking_monitor.setOrder(price_limit, 40, {"from": account})
+    price_bound_tx = staking_monitor.setOrder(price_limit, 40, {"from": get_account()})
     price_bound_tx.wait(1)
     # Assert
     assert staking_monitor.s_lowestPriceLimit() == price_limit
@@ -171,24 +175,20 @@ def test_setting_the_lowest_price_limit_sets_lower_price_limit():
 #     assert value > 0
 
 
-def test_can_call_check_upkeep():
+def test_can_call_check_upkeep(deploy_staking_monitor_contract):
     # Arrange
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     upkeepNeeded, performData = staking_monitor.checkUpkeep.call(
         "",
-        {"from": account},
+        {"from": get_account()},
     )
     assert isinstance(upkeepNeeded, bool)
     assert isinstance(performData, bytes)
 
 
-def test_upkeep_needed():
+def test_upkeep_needed(deploy_staking_monitor_contract):
     # Arrange
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     # get current price
     current_eth_price = staking_monitor.getPrice({"from": get_account()})
     # deposit some eth so that we can set a price limit
@@ -199,23 +199,23 @@ def test_upkeep_needed():
     deposit_tx.wait(1)
     # set a price limit that is 100 less than current price so that upkeep is needed
     user_price_limit = current_eth_price - 100
-    price_limit_tx = staking_monitor.setOrder(user_price_limit, 40, {"from": account})
+    price_limit_tx = staking_monitor.setOrder(
+        user_price_limit, 40, {"from": get_account()}
+    )
     price_limit_tx.wait(1)
 
     # Act
     upkeepNeeded, performData = staking_monitor.checkUpkeep.call(
         "",
-        {"from": account},
+        {"from": get_account()},
     )
     assert upkeepNeeded == True
     assert isinstance(performData, bytes)
 
 
-def test_upkeep_not_needed():
+def test_upkeep_not_needed(deploy_staking_monitor_contract):
     # Arrange
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
+    staking_monitor = deploy_staking_monitor_contract
     # get current price
     current_eth_price = staking_monitor.getPrice({"from": get_account()})
     # deposit some eth so that we can set a price limit
@@ -226,13 +226,15 @@ def test_upkeep_not_needed():
     deposit_tx.wait(1)
     # set a price limit that is 100 less than current price so that upkeep is needed
     user_price_limit = current_eth_price + 100
-    price_limit_tx = staking_monitor.setOrder(user_price_limit, 40, {"from": account})
+    price_limit_tx = staking_monitor.setOrder(
+        user_price_limit, 40, {"from": get_account()}
+    )
     price_limit_tx.wait(1)
 
     # Act
     upkeepNeeded, performData = staking_monitor.checkUpkeep.call(
         "",
-        {"from": account},
+        {"from": get_account()},
     )
     assert upkeepNeeded == False
     assert isinstance(performData, bytes)
