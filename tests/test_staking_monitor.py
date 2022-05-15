@@ -158,17 +158,17 @@ def test_setting_the_lowest_price_limit_sets_lower_price_limit():
     assert staking_monitor.s_lowestPriceLimit() == price_limit
 
 
-def test_can_get_latest_price():
-    # Arrange
-
-    # Act
-    account = get_account()
-    address = get_contract("eth_usd_price_feed").address
-    staking_monitor = StakingMonitor.deploy(address, {"from": account})
-    # Assert
-    value = staking_monitor.getPrice({"from": get_account()})
-    assert isinstance(value, int)
-    assert value > 0
+# def test_can_get_latest_price():
+#     # Arrange
+#
+#     # Act
+#     account = get_account()
+#     address = get_contract("eth_usd_price_feed").address
+#     staking_monitor = StakingMonitor.deploy(address, {"from": account})
+#     # Assert
+#     value = staking_monitor.getPrice({"from": get_account()})
+#     assert isinstance(value, int)
+#     assert value > 0
 
 
 def test_can_call_check_upkeep():
