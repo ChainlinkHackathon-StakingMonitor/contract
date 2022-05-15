@@ -104,6 +104,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
             ) {
                 //SWAP s_userInfos[s_watchList[idx]].balanceToSwap * (s_userInfos[s_watchList[idx]].percentageToSwap / 100) amount to DAI
                 // update s_userInfos[s_watchList[idx]].DAIBalance
+                // emit event with swap info for each address where a swap happened
             }
         }
     }
