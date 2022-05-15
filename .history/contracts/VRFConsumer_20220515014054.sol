@@ -3,9 +3,6 @@ pragma solidity ^0.8.0;
 
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
-//VRF1 deprecated --> need to change 
-
-
 contract VRFConsumer is VRFConsumerBase {
     
     bytes32 internal keyHash;

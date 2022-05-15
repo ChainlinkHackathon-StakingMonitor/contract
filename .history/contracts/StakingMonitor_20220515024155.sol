@@ -35,7 +35,8 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
     address[] public s_watchList;
 
     modifier onlyStaker {
-      require(s_watchList[msg.sender] != address(0));
+      require(s_watchList[msg.sender] != address(0);
+      require()
       _;
    }
 
@@ -67,10 +68,16 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
             msg.value;
         emit Deposited(msg.sender);
     }
-   
+
+    modifier onlyStaker {
+      require();
+      _;
+   }
+
     function withdraw() public onlyStaker() {
         userInfos[msg.sender].depositBalance =+ msg.value;
-        //(bool success, ) = msg.sender.call.value()
+        (bool success, ) = msg.sender.call.value()
+        
         emit Deposited(msg.sender);
     }
 

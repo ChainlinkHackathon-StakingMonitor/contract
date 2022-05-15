@@ -6,8 +6,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/UniswapV2RouterInterface.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
@@ -16,28 +14,22 @@ error StakeMonitor__UserHasntDepositedETH();
 
 
 
-contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
-
+contract StakingMonitor is KeeperCompatibleInterface {
+    
     struct userInfo {
     uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
     uint256 balanceToSpend;
-    uint256 latestBalance; 
-    }
-
-    mapping(address => userInfo) public userInfos; // 
+    uint256 latestBalance;
+}
+    mapping(address => userInfo) public s_userInfos;
     event Deposited(address indexed user);
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
     address[] public s_watchList;
-
-    modifier onlyStaker {
-      require(s_watchList[msg.sender] != address(0));
-      _;
-   }
 
     constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -48,43 +40,39 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         return uint256(answer);
     }
 
-  
-    /**************************************************************************
-     * Accountability of Staking Monitor Logic 
-    *************************************************************************/
-
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...
         // not sure that's the best logic but let's see
-        if (userInfos[msg.sender].depositBalance == 0) {
-            userInfos[msg.sender].latestBalance = msg.sender.balance;
+        if (s_userInfos[msg.sender].depositBalance == 0) {
+            s_userInfos[msg.sender].latestBalance = msg.sender.balance;
         }
 
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
-        userInfos[msg.sender].depositBalance =
-            userInfos[msg.sender].depositBalance +
+        s_userInfos[msg.sender].depositBalance =
+            s_userInfos[msg.sender].depositBalance +
             msg.value;
         emit Deposited(msg.sender);
     }
-   
-    function withdraw() public onlyStaker() {
-        userInfos[msg.sender].depositBalance =+ msg.value;
-        //(bool success, ) = msg.sender.call.value()
+
+    function withdrawETH() external payable {
+        s_userInfos[msg.sender].depositBalance =
+            s_userInfos[msg.sender].depositBalance +
+            msg.value;
         emit Deposited(msg.sender);
     }
 
     function getBalance() external view returns (uint256) {
-        return userInfos[msg.sender].depositBalance;
+        return s_userInfos[msg.sender].depositBalance;
     }
 
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
-        if (userInfos[msg.sender].depositBalance == 0) {
+        if (s_userInfos[msg.sender].depositBalance == 0) {
             revert StakeMonitor__UserHasntDepositedETH();
         }
 
-        userInfos[msg.sender].priceLimit = _priceLimit;
+        s_userInfos[msg.sender].priceLimit = _priceLimit;
 
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
         if ((s_lowestPriceLimit == 0) || (s_lowestPriceLimit > _priceLimit)) {
@@ -96,8 +84,8 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
             // for each address in the watchlist, we check if the balance has increased.
             // if so, we are allowed to spend the difference between the new balance and the old one
-            userInfos[s_watchList[idx]].balanceToSpend = (s_watchList[idx]
-                .balance - userInfos[s_watchList[idx]].latestBalance);
+            s_userInfos[s_watchList[idx]].balanceToSpend = (s_watchList[idx]
+                .balance - s_userInfos[s_watchList[idx]].latestBalance);
         }
     }
 

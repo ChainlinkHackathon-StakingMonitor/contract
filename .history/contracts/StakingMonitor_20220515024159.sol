@@ -67,10 +67,16 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
             msg.value;
         emit Deposited(msg.sender);
     }
-   
+
+    modifier onlyStaker {
+      require();
+      _;
+   }
+
     function withdraw() public onlyStaker() {
         userInfos[msg.sender].depositBalance =+ msg.value;
-        //(bool success, ) = msg.sender.call.value()
+        (bool success, ) = msg.sender.call.value()
+        
         emit Deposited(msg.sender);
     }
 

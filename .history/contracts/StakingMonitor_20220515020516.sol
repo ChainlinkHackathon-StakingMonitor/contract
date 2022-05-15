@@ -6,8 +6,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/UniswapV2RouterInterface.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
@@ -16,28 +14,23 @@ error StakeMonitor__UserHasntDepositedETH();
 
 
 
-contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
+contract StakingMonitor is KeeperCompatibleInterface {
 
     struct userInfo {
     uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
     uint256 balanceToSpend;
-    uint256 latestBalance; 
+    uint256 latestBalance;
     }
 
-    mapping(address => userInfo) public userInfos; // 
+    mapping(address => userInfo) public userInfos;
     event Deposited(address indexed user);
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
     address[] public s_watchList;
-
-    modifier onlyStaker {
-      require(s_watchList[msg.sender] != address(0));
-      _;
-   }
 
     constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
@@ -48,10 +41,13 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         return uint256(answer);
     }
 
-  
+    // Reentrancy warning !! 
+    // Tracking of balance ??
+
+
     /**************************************************************************
      * Accountability of Staking Monitor Logic 
-    *************************************************************************/
+     *************************************************************************/
 
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...
@@ -67,10 +63,11 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
             msg.value;
         emit Deposited(msg.sender);
     }
-   
-    function withdraw() public onlyStaker() {
-        userInfos[msg.sender].depositBalance =+ msg.value;
-        //(bool success, ) = msg.sender.call.value()
+
+    function withdrawETH() external payable {
+        userInfos[msg.sender].depositBalance =
+            userInfos[msg.sender].depositBalance +
+            msg.value;
         emit Deposited(msg.sender);
     }
 
