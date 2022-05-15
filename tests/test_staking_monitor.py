@@ -42,7 +42,7 @@ def test_deposit():
     assert staking_monitor.s_watchList(1) == get_account(1).address
 
 
-def test_get_balance():
+def test_get_deposit_balance():
     # Arrange
     address = get_contract("eth_usd_price_feed").address
     staking_monitor = StakingMonitor.deploy(address, {"from": get_account()})
@@ -52,7 +52,7 @@ def test_get_balance():
     deposit_tx.wait(1)
 
     # returns tuple
-    balance = staking_monitor.getBalance({"from": get_account()})
+    balance = staking_monitor.getDepositBalance({"from": get_account()})
     assert balance == value
 
 
@@ -64,11 +64,11 @@ def test_set_price_limit_if_user_has_not_deposited_reverts():
     price_limit = 30000000000
     # Act & Assert
     with pytest.raises(exceptions.VirtualMachineError):
-        price_limit_tx = staking_monitor.setPriceLimit(price_limit, {"from": account})
+        price_limit_tx = staking_monitor.setOrder(price_limit, 40, {"from": account})
         price_limit_tx.wait(1)
 
 
-def test_set_balances_to_spend():
+def test_set_balances_to_swap():
     # Arrange
     account = get_account(2)
     address = get_contract("eth_usd_price_feed").address
@@ -87,12 +87,12 @@ def test_set_balances_to_spend():
     account_1.transfer(account, "10 ether")
     # assert account.balance() == 109990000000000000000
 
-    tx = staking_monitor.setBalancesToSpend()
+    tx = staking_monitor.setBalancesToSwap()
     tx.wait(1)
     watch_list_entry_for_address = staking_monitor.s_watchList(0)
     assert watch_list_entry_for_address == account.address
     assert (
-        staking_monitor.s_userInfos(watch_list_entry_for_address)["balanceToSpend"]
+        staking_monitor.s_userInfos(watch_list_entry_for_address)["balanceToSwap"]
         == 10000000000000000000
     )
 
@@ -101,7 +101,7 @@ def test_set_balances_to_spend():
     # Assert
 
 
-def test_can_set_price_limit():
+def test_can_set_order():
     # Arrange
     account = get_account()
     address = get_contract("eth_usd_price_feed").address
@@ -110,11 +110,19 @@ def test_can_set_price_limit():
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
     deposit_tx.wait(1)
     price_limit = 30000000000
+    # percentage to swap is given in percentages, the portion will be calculated in the contract
+    percentage_to_swap = 40
     # Act
-    price_bound_tx = staking_monitor.setPriceLimit(price_limit, {"from": account})
+    price_bound_tx = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": account}
+    )
     price_bound_tx.wait(1)
     # Assert
-    assert staking_monitor.s_userInfos(account.address)[2] == price_limit
+    assert staking_monitor.s_userInfos(account.address)["priceLimit"] == price_limit
+    assert (
+        staking_monitor.s_userInfos(account.address)["percentageToSwap"]
+        == percentage_to_swap
+    )
 
 
 def test_setting_the_lowest_price_limit_sets_lower_price_limit():
@@ -127,7 +135,7 @@ def test_setting_the_lowest_price_limit_sets_lower_price_limit():
     deposit_tx.wait(1)
     price_limit = staking_monitor.getPrice({"from": get_account()}) - 1000
     # Act
-    price_bound_tx = staking_monitor.setPriceLimit(price_limit, {"from": account})
+    price_bound_tx = staking_monitor.setOrder(price_limit, 40, {"from": account})
     price_bound_tx.wait(1)
     # Assert
     assert staking_monitor.s_lowestPriceLimit() == price_limit
@@ -174,7 +182,7 @@ def test_upkeep_needed():
     deposit_tx.wait(1)
     # set a price limit that is 100 less than current price so that upkeep is needed
     user_price_limit = current_eth_price - 100
-    price_limit_tx = staking_monitor.setPriceLimit(user_price_limit, {"from": account})
+    price_limit_tx = staking_monitor.setOrder(user_price_limit, 40, {"from": account})
     price_limit_tx.wait(1)
 
     # Act
@@ -201,7 +209,7 @@ def test_upkeep_not_needed():
     deposit_tx.wait(1)
     # set a price limit that is 100 less than current price so that upkeep is needed
     user_price_limit = current_eth_price + 100
-    price_limit_tx = staking_monitor.setPriceLimit(user_price_limit, {"from": account})
+    price_limit_tx = staking_monitor.setOrder(user_price_limit, 40, {"from": account})
     price_limit_tx.wait(1)
 
     # Act

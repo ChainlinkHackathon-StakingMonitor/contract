@@ -16,7 +16,8 @@ struct userInfo {
     uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
-    uint256 balanceToSpend;
+    uint256 percentageToSwap;
+    uint256 balanceToSwap;
     uint256 latestBalance;
 }
 
@@ -60,19 +61,18 @@ contract StakingMonitor is KeeperCompatibleInterface {
         emit Deposited(msg.sender);
     }
 
-    function getBalance() external view returns (uint256) {
+    function getDepositBalance() external view returns (uint256) {
         return s_userInfos[msg.sender].depositBalance;
     }
 
-    function setPriceLimit(uint256 _priceLimit) external {
-        // a user cannot set a price limit if they haven't deposited some eth
-        if (s_userInfos[msg.sender].depositBalance == 0) {
-            revert StakeMonitor__UserHasntDepositedETH();
-        }
-
-        s_userInfos[msg.sender].priceLimit = _priceLimit;
-        setLowestPriceLimit(_priceLimit);
-    }
+    //function setPriceLimit(uint256 _priceLimit) external {
+    //    // a user cannot set a price limit if they haven't deposited some eth
+    //    if (s_userInfos[msg.sender].depositBalance == 0) {
+    //        revert StakeMonitor__UserHasntDepositedETH();
+    //    }
+    //    s_userInfos[msg.sender].priceLimit = _priceLimit;
+    //    setLowestPriceLimit(_priceLimit);
+    //}
 
     function setLowestPriceLimit(uint256 _priceLimit) internal {
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
@@ -81,11 +81,23 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
-    function setBalancesToSpend() external {
+    function setOrder(uint256 _priceLimit, uint256 _percentageToSwap) external {
+        // a user cannot set a price limit if they haven't deposited some eth
+        if (s_userInfos[msg.sender].depositBalance == 0) {
+            revert StakeMonitor__UserHasntDepositedETH();
+        }
+
+        s_userInfos[msg.sender].percentageToSwap = _percentageToSwap;
+        s_userInfos[msg.sender].priceLimit = _priceLimit;
+        // we check if this new price limit becomes the new price limit
+        setLowestPriceLimit(_priceLimit);
+    }
+
+    function setBalancesToSwap() external {
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
             // for each address in the watchlist, we check if the balance has increased.
             // if so, we are allowed to spend the difference between the new balance and the old one
-            s_userInfos[s_watchList[idx]].balanceToSpend = (s_watchList[idx]
+            s_userInfos[s_watchList[idx]].balanceToSwap = (s_watchList[idx]
                 .balance - s_userInfos[s_watchList[idx]].latestBalance);
         }
     }
