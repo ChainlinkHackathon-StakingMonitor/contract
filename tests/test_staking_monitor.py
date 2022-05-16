@@ -146,20 +146,20 @@ def test_can_set_order(deploy_staking_monitor_contract):
     )
 
 
-def test_setting_the_lowest_price_limit_sets_lower_price_limit(
-    deploy_staking_monitor_contract,
-):
-    # Arrange
-    staking_monitor = deploy_staking_monitor_contract
-    value = Web3.toWei(0.01, "ether")
-    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
-    deposit_tx.wait(1)
-    price_limit = staking_monitor.getPrice({"from": get_account()}) - 1000
-    # Act
-    price_bound_tx = staking_monitor.setOrder(price_limit, 40, {"from": get_account()})
-    price_bound_tx.wait(1)
-    # Assert
-    assert staking_monitor.s_lowestPriceLimit() == price_limit
+# def test_setting_the_lowest_price_limit_sets_lower_price_limit(
+#     deploy_staking_monitor_contract,
+# ):
+#     # Arrange
+#     staking_monitor = deploy_staking_monitor_contract
+#     value = Web3.toWei(0.01, "ether")
+#     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+#     deposit_tx.wait(1)
+#     price_limit = staking_monitor.getPrice({"from": get_account()}) - 1000
+#     # Act
+#     price_bound_tx = staking_monitor.setOrder(price_limit, 40, {"from": get_account()})
+#     price_bound_tx.wait(1)
+#     # Assert
+#     assert staking_monitor.s_lowestPriceLimit() == price_limit
 
 
 # def test_can_get_latest_price():

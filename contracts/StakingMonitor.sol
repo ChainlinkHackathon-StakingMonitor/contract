@@ -9,7 +9,6 @@ import "../interfaces/UniswapV2RouterInterface.sol";
 
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
-error StakingMonitor__UpperBond_SmallerThan_LowerBound();
 error StakeMonitor__UserHasntDepositedETH();
 
 struct userInfo {
@@ -24,6 +23,15 @@ struct userInfo {
 contract StakingMonitor is KeeperCompatibleInterface {
     mapping(address => userInfo) public s_userInfos;
     event Deposited(address indexed user);
+    // we only stored the following in the event, the rest is calculated in the front end
+    event Swapped(
+        address indexed _address,
+        uint256 _timestamp,
+        uint256 _totalReward,
+        uint256 _setPriceLimit,
+        uint256 _percentageSwapped,
+        uint256 _ETHPrice
+    );
     AggregatorV3Interface public priceFeed;
     IERC20 public DAIToken;
 
@@ -105,6 +113,22 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 //SWAP s_userInfos[s_watchList[idx]].balanceToSwap * (s_userInfos[s_watchList[idx]].percentageToSwap / 100) amount to DAI
                 // update s_userInfos[s_watchList[idx]].DAIBalance
                 // emit event with swap info for each address where a swap happened
+                //event Swapped(
+                //    address indexed _address,
+                //    uint256 _timestamp,
+                //    uint256 _totalReward,
+                //    uint256 _setPriceLimit,
+                //    uint256 _percentageSwapped,
+                //    uint256 _ETHPrice,
+                //);
+                emit Swapped(
+                    s_watchList[idx],
+                    block.timestamp,
+                    s_userInfos[s_watchList[idx]].balanceToSwap,
+                    s_userInfos[s_watchList[idx]].priceLimit,
+                    s_userInfos[s_watchList[idx]].percentageToSwap,
+                    currentPrice
+                );
             }
         }
     }
