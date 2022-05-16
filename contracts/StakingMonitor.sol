@@ -90,7 +90,8 @@ contract StakingMonitor is KeeperCompatibleInterface {
             revert StakeMonitor__UserHasntDepositedETH();
         }
         s_userInfos[msg.sender].percentageToSwap = _percentageToSwap;
-        s_userInfos[msg.sender].priceLimit = _priceLimit;
+        // priceLimit needs to have same units as what is returned by getPrice
+        s_userInfos[msg.sender].priceLimit = _priceLimit * 100000000;
     }
 
     function setBalancesToSwap() public {
@@ -107,8 +108,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
             // check the order conditions for each user in watchlist and trigger a swap if conditions are satisfied
             if (
-                s_userInfos[s_watchList[idx]].balanceToSwap > 0 &&
-                s_userInfos[s_watchList[idx]].priceLimit > currentPrice
+                // commenting out balanceToSwap condition for test
+                //s_userInfos[s_watchList[idx]].balanceToSwap > 0 &&
+                currentPrice > s_userInfos[s_watchList[idx]].priceLimit
             ) {
                 //SWAP s_userInfos[s_watchList[idx]].balanceToSwap * (s_userInfos[s_watchList[idx]].percentageToSwap / 100) amount to DAI
                 // update s_userInfos[s_watchList[idx]].DAIBalance
