@@ -105,15 +105,16 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
-    function swapEthForDAI(uint256 ethAmount) public payable returns (uint256) {
+    function swapEthForDAI() public returns (uint256) {
         address[] memory path = new address[](2);
         path[0] = uniswap.WETH();
         path[1] = address(DAIToken);
+        uint256 amount = address(this).balance;
 
         uint[] memory tokenAmount_;
 
         // make the swap
-        tokenAmount_ = uniswap.swapExactETHForTokens{value: ethAmount}(
+        tokenAmount_ = uniswap.swapExactETHForTokens{value: amount}(
             0,
             path,
             address(this), // The contract
