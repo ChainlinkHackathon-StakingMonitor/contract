@@ -79,7 +79,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
         s_userInfos[msg.sender].depositBalance =
             s_userInfos[msg.sender].depositBalance -
             _amount;
-        emit Deposited(msg.sender);
     }
 
     function getDepositBalance() external view returns (uint256) {
@@ -105,12 +104,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
-    function swapEthForDAI() public returns (uint256) {
+    function swapEthForDAI(uint256 amount) public returns (uint256) {
         address[] memory path = new address[](2);
         path[0] = uniswap.WETH();
         path[1] = address(DAIToken);
-        uint256 amount = address(this).balance;
-
         uint[] memory tokenAmount_;
 
         // make the swap
@@ -135,6 +132,14 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 //s_userInfos[s_watchList[idx]].balanceToSwap > 0 &&
                 currentPrice > s_userInfos[s_watchList[idx]].priceLimit
             ) {
+                uint256 amountToSwapForUser = (s_userInfos[s_watchList[idx]]
+                    .depositBalance *
+                    s_userInfos[s_watchList[idx]].percentageToSwap) / 100;
+
+                s_userInfos[s_watchList[idx]].DAIBalance = swapEthForDAI(
+                    amountToSwapForUser
+                );
+
                 //SWAP s_userInfos[s_watchList[idx]].balanceToSwap * (s_userInfos[s_watchList[idx]].percentageToSwap / 100) amount to DAI
                 // update s_userInfos[s_watchList[idx]].DAIBalance
                 // emit event with swap info for each address where a swap happened
