@@ -16,6 +16,7 @@ def deploy_staking_monitor_contract():
     staking_monitor = StakingMonitor.deploy(
         get_contract("eth_usd_price_feed").address,
         get_contract("dai_token").address,
+        get_contract("uniswap_v2").address,
         interval,
         {"from": get_account()},
     )

@@ -7,6 +7,7 @@ from brownie import (
     MockV3Aggregator,
     MockOracle,
     VRFCoordinatorMock,
+    MockUniswapV2,
     Contract,
     web3,
 )
@@ -26,6 +27,7 @@ contract_to_mock = {
     "dai_token": DAIToken,
     "eth_usd_price_feed": MockV3Aggregator,
     "vrf_coordinator": VRFCoordinatorMock,
+    "uniswap_v2": MockUniswapV2,
     "oracle": MockOracle,
 }
 
@@ -107,6 +109,10 @@ def deploy_mocks(decimals=DECIMALS, initial_value=INITIAL_VALUE):
     print("Deploying Mock DAI Token...")
     dai_token = DAIToken.deploy({"from": account})
     print("Deploying Mock Price Feed...")
+    print(f"Deployed to {dai_token.address}")
+    uniswap_v2 = MockUniswapV2.deploy({"from": account})
+    print("Deploying Mock Uniswap V2...")
+    print(f"Deployed to {uniswap_v2.address}")
     mock_price_feed = MockV3Aggregator.deploy(
         decimals, initial_value, {"from": account}
     )

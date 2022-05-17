@@ -5,7 +5,7 @@ pragma abicoder v2;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/UniswapV2RouterInterface.sol";
+import "../interfaces/IUniswapV2.sol";
 
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
@@ -34,6 +34,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
     );
     AggregatorV3Interface public priceFeed;
     IERC20 public DAIToken;
+    IUniswapV2 public uniswap;
 
     uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
@@ -43,12 +44,14 @@ contract StakingMonitor is KeeperCompatibleInterface {
     constructor(
         address _priceFeed,
         address _DAIToken,
+        address _uniswap,
         uint256 _interval
     ) {
         priceFeed = AggregatorV3Interface(_priceFeed);
         DAIToken = IERC20(_DAIToken);
         interval = _interval;
         lastTimeStamp = block.timestamp;
+        uniswap = IUniswapV2(_uniswap);
     }
 
     function getPrice() public view returns (uint256) {

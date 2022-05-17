@@ -29,6 +29,7 @@ networks:
     vrf_coordinator: "0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9"
     link_token: "0xa36085F69e2889c224210F603D836748e7dC0088"
     dai_token: "0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa"
+    uniswap_v2: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
     keyhash: "0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4"
     fee: 100000000000000000
     oracle: "0xc57b33452b4f7bb189bb5afae9cc4aba1f7a4fd8"
@@ -47,6 +48,7 @@ networks:
     vrf_coordinator: "0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B"
     link_token: "0x01be23585060835e02b77ef475b0cc51aa1e0709"
     dai_token: "0x95b58a6Bff3D14B7DB2f5cb5F0Ad413DC2940658"
+    uniswap_v2: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
     keyhash: "0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311"
     fee: 100000000000000000
     oracle: "0xc57b33452b4f7bb189bb5afae9cc4aba1f7a4fd8"
