@@ -36,7 +36,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
     IERC20 public DAIToken;
     IUniswapV2 public uniswap;
 
-    uint256 public s_lowestPriceLimit;
     uint256 public lastTimeStamp;
     uint256 public immutable interval;
     address[] public s_watchList;
@@ -104,6 +103,26 @@ contract StakingMonitor is KeeperCompatibleInterface {
             s_userInfos[s_watchList[idx]].balanceToSwap = (s_watchList[idx]
                 .balance - s_userInfos[s_watchList[idx]].latestBalance);
         }
+    }
+
+    function swapEthForDAI(uint256 ethAmount) public payable returns (uint256) {
+        address[] memory path = new address[](2);
+        path[0] = uniswap.WETH();
+        path[1] = address(DAIToken);
+
+        uint[] memory tokenAmount_;
+
+        // make the swap
+        tokenAmount_ = uniswap.swapExactETHForTokens{value: ethAmount}(
+            0,
+            path,
+            address(this), // The contract
+            block.timestamp
+        );
+        uint256 outputTokenCount = uint256(
+            tokenAmount_[tokenAmount_.length - 1]
+        );
+        return outputTokenCount;
     }
 
     function checkConditionsAndPerformSwap() public {
