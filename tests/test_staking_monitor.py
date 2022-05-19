@@ -207,33 +207,66 @@ def test_set_balances_to_swap_accrues(deploy_staking_monitor_contract):
     )
 
 
-# def test_setting_the_lowest_price_limit_sets_lower_price_limit(
-#     deploy_staking_monitor_contract,
-# ):
-#     # Arrange
-#     staking_monitor = deploy_staking_monitor_contract
-#     value = Web3.toWei(0.01, "ether")
-#     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
-#     deposit_tx.wait(1)
-#     price_limit = staking_monitor.getPrice({"from": get_account()}) - 1000
-#     # Act
-#     price_bound_tx = staking_monitor.setOrder(price_limit, 40, {"from": get_account()})
-#     price_bound_tx.wait(1)
-#     # Assert
-#     assert staking_monitor.s_lowestPriceLimit() == price_limit
+def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    user_account = get_account(5)
+    user_account_2 = get_account(6)
+    assert user_account.balance() == 100000000000000000000
+    # we deposit into the contract
+    value = Web3.toWei(0.01, "ether")
+    deposit_tx = staking_monitor.deposit({"from": user_account, "value": value})
+    deposit_tx.wait(1)
+    deposit_tx_2 = staking_monitor.deposit({"from": user_account_2, "value": value})
+    deposit_tx_2.wait(1)
+    assert user_account.balance() == 99990000000000000000
+    assert (
+        staking_monitor.s_users(user_account.address)["latestBalance"]
+        == 99990000000000000000
+    )
 
+    # we get the latest price
+    current_price = staking_monitor.getPrice({"from": get_account()})
 
-# def test_can_get_latest_price():
-#     # Arrange
-#
-#     # Act
-#     account = get_account()
-#     address = get_contract("eth_usd_price_feed").address
-#     staking_monitor = StakingMonitor.deploy(address, {"from": account})
-#     # Assert
-#     value = staking_monitor.getPrice({"from": get_account()})
-#     assert isinstance(value, int)
-#     assert value > 0
+    # we make sure that the price limit that will be set in the order is lower than the current price
+    price_limit = current_price - 200000
+    # percentage to swap is given in percentages, the portion will be calculated in the contract
+    percentage_to_swap = 40
+
+    set_order_tx = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": user_account}
+    )
+    set_order_tx.wait(1)
+    set_order_tx_2 = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": user_account_2}
+    )
+
+    # we mimic a staking reward by sending some ether from another account
+    rewards_distributor = get_account(1)
+    rewards_distributor.transfer(user_account, "1 ether")
+    rewards_distributor.transfer(user_account_2, "1 ether")
+    # assert account.balance() == 109990000000000000000
+
+    tx = staking_monitor.setBalancesToSwap()
+    tx.wait(1)
+    watch_list_entry_for_address = staking_monitor.s_watchList(0)
+
+    assert watch_list_entry_for_address == user_account.address
+    assert (
+        staking_monitor.s_users(user_account.address)["balanceToSwap"]
+        == 400000000000000000
+    )
+
+    # Act
+    tx = staking_monitor.checkConditionsAndPerformSwap({"from": get_account()})
+    tx.wait(1)
+
+    # Assert
+    assert staking_monitor.s_users(user_account.address)["priceLimit"] < current_price
+    assert (
+        staking_monitor.s_users(user_account.address)["DAIBalance"] == 500000000000000
+    )
+    assert staking_monitor.s_users(user_account.address)["balanceToSwap"] == 0
 
 
 def test_can_call_check_upkeep(deploy_staking_monitor_contract):

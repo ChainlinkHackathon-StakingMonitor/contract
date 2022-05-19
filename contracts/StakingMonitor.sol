@@ -100,7 +100,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
         s_users[msg.sender].percentageToSwap = _percentageToSwap;
         // priceLimit needs to have same units as what is returned by getPrice
-        s_users[msg.sender].priceLimit = _priceLimit * 100000000;
+        s_users[msg.sender].priceLimit = _priceLimit;
     }
 
     function swapEthForDAI(uint256 amount) public returns (uint256) {
@@ -169,6 +169,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
         // we perform the swap
         if (totalAmountToSwap > 0) {
+            //totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
             totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
         }
         // we distribute the DAI balances among participants
@@ -179,11 +180,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 totalDAIFromSwap *
                 (s_users[addressesForSwap[idx]].balanceToSwap /
                     totalAmountToSwap);
-            // we reinitialise the balance to swap
+            // we reinitialise the balance to swap for the user
             s_users[addressesForSwap[idx]].balanceToSwap = 0;
         }
-
-        // we reinitialise some values
     }
 
     function checkUpkeep(bytes calldata checkData)
