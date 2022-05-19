@@ -11,6 +11,7 @@ import "./ABDKMath64x64.sol";
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
 error StakeMonitor__UserHasntDepositedETH();
+error StakeMonitor_NotEnoughDAIInBalance();
 
 struct userData {
     uint256 depositBalance;
@@ -96,7 +97,12 @@ contract StakingMonitor is KeeperCompatibleInterface {
     }
 
     function withdrawDAI(uint256 _amount) external {
-        DAIToken.transfer(msg.sender, s_users[msg.sender].DAIBalance);
+        if (_amount <= s_users[msg.sender].DAIBalance) {
+            s_users[msg.sender].DAIBalance -= _amount;
+            DAIToken.transfer(msg.sender, s_users[msg.sender].DAIBalance);
+        } else {
+            revert StakeMonitor_NotEnoughDAIInBalance();
+        }
     }
 
     function getDepositBalance() external view returns (uint256) {
