@@ -6,22 +6,23 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IUniswapV2.sol";
+import "./ABDKMath64x64.sol";
 
 error StakeMonitor__UpkeepNotNeeded();
 error StakeMonitor__TransferFailed();
 error StakeMonitor__UserHasntDepositedETH();
 
-struct userInfo {
+struct userData {
     uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
     uint256 percentageToSwap;
+    uint256 rewardsAccrued;
     uint256 balanceToSwap;
     uint256 latestBalance;
 }
 
 contract StakingMonitor is KeeperCompatibleInterface {
-    mapping(address => userInfo) public s_userInfos;
     event Deposited(address indexed user);
     // we only stored the following in the event, the rest is calculated in the front end
     event Swapped(
@@ -38,7 +39,15 @@ contract StakingMonitor is KeeperCompatibleInterface {
 
     uint256 public lastTimeStamp;
     uint256 public immutable interval;
+
+    mapping(address => userData) public s_users;
     address[] public s_watchList;
+
+    // these storage variables are used to store values needed to perform
+    // and distribute the results of the swap.
+    address[] public addressesForSwap;
+    uint256 public totalAmountToSwap;
+    uint256 public totalDAIFromSwap;
 
     constructor(
         address _priceFeed,
@@ -63,45 +72,36 @@ contract StakingMonitor is KeeperCompatibleInterface {
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...
         // not sure that's the best logic but let's see
-        if (s_userInfos[msg.sender].depositBalance == 0) {
-            s_userInfos[msg.sender].latestBalance = msg.sender.balance;
+        if (s_users[msg.sender].depositBalance == 0) {
+            s_users[msg.sender].latestBalance = msg.sender.balance;
         }
 
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
-        s_userInfos[msg.sender].depositBalance =
-            s_userInfos[msg.sender].depositBalance +
+        s_users[msg.sender].depositBalance =
+            s_users[msg.sender].depositBalance +
             msg.value;
         emit Deposited(msg.sender);
     }
 
     function withdrawETH(uint256 _amount) external {
-        s_userInfos[msg.sender].depositBalance =
-            s_userInfos[msg.sender].depositBalance -
+        s_users[msg.sender].depositBalance =
+            s_users[msg.sender].depositBalance -
             _amount;
     }
 
     function getDepositBalance() external view returns (uint256) {
-        return s_userInfos[msg.sender].depositBalance;
+        return s_users[msg.sender].depositBalance;
     }
 
     function setOrder(uint256 _priceLimit, uint256 _percentageToSwap) external {
         // a user cannot set a price limit if they haven't deposited some eth
-        if (s_userInfos[msg.sender].depositBalance == 0) {
+        if (s_users[msg.sender].depositBalance == 0) {
             revert StakeMonitor__UserHasntDepositedETH();
         }
-        s_userInfos[msg.sender].percentageToSwap = _percentageToSwap;
+        s_users[msg.sender].percentageToSwap = _percentageToSwap;
         // priceLimit needs to have same units as what is returned by getPrice
-        s_userInfos[msg.sender].priceLimit = _priceLimit * 100000000;
-    }
-
-    function setBalancesToSwap() public {
-        for (uint256 idx = 0; idx < s_watchList.length; idx++) {
-            // for each address in the watchlist, we check if the balance has increased.
-            // if so, we are allowed to spend the difference between the new balance and the old one
-            s_userInfos[s_watchList[idx]].balanceToSwap = (s_watchList[idx]
-                .balance - s_userInfos[s_watchList[idx]].latestBalance);
-        }
+        s_users[msg.sender].priceLimit = _priceLimit * 100000000;
     }
 
     function swapEthForDAI(uint256 amount) public returns (uint256) {
@@ -123,44 +123,66 @@ contract StakingMonitor is KeeperCompatibleInterface {
         return outputTokenCount;
     }
 
+    function setBalancesToSwap() public {
+        for (uint256 idx = 0; idx < s_watchList.length; idx++) {
+            // for each address in the watchlist, on each keeper tick, we check if the balance of their actual address has increased.
+            // if so, we are allowed to spend their percentage (set in the order) of the difference between the new balance and the old one.
+            // this is a placeholder until we get the real staking reward distribution event.
+            s_users[s_watchList[idx]].balanceToSwap +=
+                ((s_watchList[idx].balance -
+                    s_users[s_watchList[idx]].latestBalance) *
+                    s_users[s_watchList[idx]].percentageToSwap) /
+                100;
+        }
+    }
+
     function checkConditionsAndPerformSwap() public {
         uint256 currentPrice = getPrice();
+
+        // on each tick, we start from an empty list
+        // of addresses that will be part of this swap,
+        // and we reinitialise the totalAmountToSwap.
+        delete addressesForSwap;
+        totalAmountToSwap = 0;
+
+        // we build a list of the addresses that will be part of the swap
+        // (the ones where conditions for swap are satisfied). We store that list in the array below.
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
             // check the order conditions for each user in watchlist and trigger a swap if conditions are satisfied
             if (
-                // commenting out balanceToSwap condition for test
-                //s_userInfos[s_watchList[idx]].balanceToSwap > 0 &&
-                currentPrice > s_userInfos[s_watchList[idx]].priceLimit
+                s_users[s_watchList[idx]].balanceToSwap > 0 &&
+                currentPrice > s_users[s_watchList[idx]].priceLimit
             ) {
-                uint256 amountToSwapForUser = (s_userInfos[s_watchList[idx]]
-                    .depositBalance *
-                    s_userInfos[s_watchList[idx]].percentageToSwap) / 100;
-
-                s_userInfos[s_watchList[idx]].DAIBalance = swapEthForDAI(
-                    amountToSwapForUser
-                );
-
-                //SWAP s_userInfos[s_watchList[idx]].balanceToSwap * (s_userInfos[s_watchList[idx]].percentageToSwap / 100) amount to DAI
-                // update s_userInfos[s_watchList[idx]].DAIBalance
-                // emit event with swap info for each address where a swap happened
-                //event Swapped(
-                //    address indexed _address,
-                //    uint256 _timestamp,
-                //    uint256 _totalReward,
-                //    uint256 _setPriceLimit,
-                //    uint256 _percentageSwapped,
-                //    uint256 _ETHPrice,
+                //we count that user in for this swap
+                addressesForSwap.push(payable(s_watchList[idx]));
+                totalAmountToSwap += s_users[s_watchList[idx]].balanceToSwap;
+                //emit Swapped(
+                //    s_watchList[idx],
+                //    block.timestamp,
+                //    s_users[s_watchList[idx]].balanceToSwap,
+                //    s_users[s_watchList[idx]].priceLimit,
+                //    s_users[s_watchList[idx]].percentageToSwap,
+                //    currentPrice
                 //);
-                emit Swapped(
-                    s_watchList[idx],
-                    block.timestamp,
-                    s_userInfos[s_watchList[idx]].balanceToSwap,
-                    s_userInfos[s_watchList[idx]].priceLimit,
-                    s_userInfos[s_watchList[idx]].percentageToSwap,
-                    currentPrice
-                );
             }
         }
+        // we perform the swap
+        if (totalAmountToSwap > 0) {
+            totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
+        }
+        // we distribute the DAI balances among participants
+        for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
+            // the new DAIBalance of each swap participant
+            // increases by their share of the totalAmountToSwap
+            s_users[addressesForSwap[idx]].DAIBalance +=
+                totalDAIFromSwap *
+                (s_users[addressesForSwap[idx]].balanceToSwap /
+                    totalAmountToSwap);
+            // we reinitialise the balance to swap
+            s_users[addressesForSwap[idx]].balanceToSwap = 0;
+        }
+
+        // we reinitialise some values
     }
 
     function checkUpkeep(bytes calldata checkData)

@@ -52,14 +52,12 @@ def test_deposit(deploy_staking_monitor_contract):
     deposit_tx_1.wait(1)
 
     # check that the balance has increased by the amount of the deposit
-    assert staking_monitor.s_userInfos(get_account().address)["depositBalance"] == value
+    assert staking_monitor.s_users(get_account().address)["depositBalance"] == value
     # check if address is added to watchlist
     assert staking_monitor.s_watchList(0) == get_account().address
 
     # check that the balance has increased by the amount of the deposit
-    assert (
-        staking_monitor.s_userInfos(get_account(1).address)["depositBalance"] == value_1
-    )
+    assert staking_monitor.s_users(get_account(1).address)["depositBalance"] == value_1
     # check if address is added to watchlist
     assert staking_monitor.s_watchList(1) == get_account(1).address
 
@@ -77,34 +75,72 @@ def test_get_deposit_balance(deploy_staking_monitor_contract):
     assert balance == value
 
 
-def test_set_price_limit_if_user_has_not_deposited_reverts(
+def test_can_set_order(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    value = Web3.toWei(0.01, "ether")
+    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx.wait(1)
+    price_limit = 3000000000000000000
+    # percentage to swap is given in percentages, the portion will be calculated in the contract
+    percentage_to_swap = 40
+    # Act
+    set_order_tx = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": get_account()}
+    )
+    set_order_tx.wait(1)
+    # Assert
+    assert (
+        staking_monitor.s_users(get_account().address)["priceLimit"]
+        == price_limit * 100000000
+    )
+    assert (
+        staking_monitor.s_users(get_account().address)["percentageToSwap"]
+        == percentage_to_swap
+    )
+
+
+def test_set_order_if_user_has_not_deposited_reverts(
     deploy_staking_monitor_contract,
 ):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
-    price_limit = 30000000000
+    price_limit = 3000000000000000000
     # Act & Assert
     with pytest.raises(exceptions.VirtualMachineError):
-        price_limit_tx = staking_monitor.setOrder(
+        set_order_tx = staking_monitor.setOrder(
             price_limit, 40, {"from": get_account()}
         )
-        price_limit_tx.wait(1)
+        set_order_tx.wait(1)
 
 
 def test_set_balances_to_swap(deploy_staking_monitor_contract):
     # Arrange
-    account = get_account(2)
     staking_monitor = deploy_staking_monitor_contract
+    account = get_account(2)
     assert account.balance() == 100000000000000000000
+    # we deposit into the contract
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(2), "value": value})
     deposit_tx.wait(1)
     assert account.balance() == 99990000000000000000
     assert (
-        staking_monitor.s_userInfos(account.address)["latestBalance"]
+        staking_monitor.s_users(account.address)["latestBalance"]
         == 99990000000000000000
     )
 
+    # Act
+    # we set the order for this user
+    price_limit = 3000000000000000000
+    # percentage to swap is given in percentages, the portion will be calculated in the contract
+    percentage_to_swap = 40
+
+    set_order_tx = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": account}
+    )
+    set_order_tx.wait(1)
+
+    # we mimic a staking reward by sending some ether from another account
     account_1 = get_account(1)
     account_1.transfer(account, "10 ether")
     # assert account.balance() == 109990000000000000000
@@ -112,39 +148,17 @@ def test_set_balances_to_swap(deploy_staking_monitor_contract):
     tx = staking_monitor.setBalancesToSwap()
     tx.wait(1)
     watch_list_entry_for_address = staking_monitor.s_watchList(0)
+
+    # Assert
     assert watch_list_entry_for_address == account.address
     assert (
-        staking_monitor.s_userInfos(watch_list_entry_for_address)["balanceToSwap"]
-        == 10000000000000000000
+        staking_monitor.s_users(watch_list_entry_for_address)["balanceToSwap"]
+        == 4000000000000000000
     )
 
     # Act
 
     # Assert
-
-
-def test_can_set_order(deploy_staking_monitor_contract):
-    # Arrange
-    staking_monitor = deploy_staking_monitor_contract
-    value = Web3.toWei(0.01, "ether")
-    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
-    deposit_tx.wait(1)
-    price_limit = 30000000000
-    # percentage to swap is given in percentages, the portion will be calculated in the contract
-    percentage_to_swap = 40
-    # Act
-    price_bound_tx = staking_monitor.setOrder(
-        price_limit, percentage_to_swap, {"from": get_account()}
-    )
-    price_bound_tx.wait(1)
-    # Assert
-    assert (
-        staking_monitor.s_userInfos(get_account().address)["priceLimit"] == price_limit
-    )
-    assert (
-        staking_monitor.s_userInfos(get_account().address)["percentageToSwap"]
-        == percentage_to_swap
-    )
 
 
 # def test_setting_the_lowest_price_limit_sets_lower_price_limit(
