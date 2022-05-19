@@ -14,6 +14,7 @@ error StakeMonitor__UserHasntDepositedETH();
 error StakeMonitor_NotEnoughDAIInBalance();
 
 struct userData {
+    bool created;
     uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
@@ -79,11 +80,15 @@ contract StakingMonitor is KeeperCompatibleInterface {
         // when user deposits the first time, we set last balance to their current balance...
         // not sure that's the best logic but let's see
         if (s_users[msg.sender].depositBalance == 0) {
-            s_users[msg.sender].latestBalance = msg.sender.balance;
+            // not sure if msg.value is already deducted from msg.sender.balance...
+            s_users[msg.sender].latestBalance = msg.sender.balance - msg.value;
         }
 
         //TODO: somehow check if address is already watched
-        s_watchList.push(msg.sender);
+        if (s_users[msg.sender].created) {
+            s_watchList.push(msg.sender);
+        }
+        s_users[msg.sender].created = true;
         s_users[msg.sender].depositBalance =
             s_users[msg.sender].depositBalance +
             msg.value;
@@ -107,6 +112,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
 
     function getDepositBalance() external view returns (uint256) {
         return s_users[msg.sender].depositBalance;
+    }
+
+    function getDAIBalance() external view returns (uint256) {
+        return s_users[msg.sender].DAIBalance;
     }
 
     function setOrder(uint256 _priceLimit, uint256 _percentageToSwap) external {
