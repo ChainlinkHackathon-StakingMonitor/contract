@@ -74,8 +74,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
         return uint256(answer);
     }
 
-    function getTotalDAIBalance() public view returns (uint256) {}
-
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...
         // not sure that's the best logic but let's see
@@ -85,7 +83,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
 
         //TODO: somehow check if address is already watched
-        if (s_users[msg.sender].created) {
+        if (!s_users[msg.sender].created) {
             s_watchList.push(msg.sender);
         }
         s_users[msg.sender].created = true;
