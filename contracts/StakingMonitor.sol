@@ -99,7 +99,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
     function withdrawDAI(uint256 _amount) external {
         if (_amount <= s_users[msg.sender].DAIBalance) {
             s_users[msg.sender].DAIBalance -= _amount;
-            DAIToken.transfer(msg.sender, s_users[msg.sender].DAIBalance);
+            DAIToken.transfer(msg.sender, _amount);
         } else {
             revert StakeMonitor_NotEnoughDAIInBalance();
         }
