@@ -17,7 +17,6 @@ struct userData {
     uint256 DAIBalance;
     uint256 priceLimit;
     uint256 percentageToSwap;
-    uint256 rewardsAccrued;
     uint256 balanceToSwap;
     uint256 latestBalance;
 }
@@ -133,6 +132,8 @@ contract StakingMonitor is KeeperCompatibleInterface {
                     s_users[s_watchList[idx]].latestBalance) *
                     s_users[s_watchList[idx]].percentageToSwap) /
                 100;
+            // we set latestBalance to the current balance
+            s_users[s_watchList[idx]].latestBalance = s_watchList[idx].balance;
         }
     }
 

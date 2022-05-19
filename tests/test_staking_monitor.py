@@ -117,15 +117,15 @@ def test_set_order_if_user_has_not_deposited_reverts(
 def test_set_balances_to_swap(deploy_staking_monitor_contract):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
-    account = get_account(2)
-    assert account.balance() == 100000000000000000000
+    user_account = get_account(2)
+    assert user_account.balance() == 100000000000000000000
     # we deposit into the contract
     value = Web3.toWei(0.01, "ether")
-    deposit_tx = staking_monitor.deposit({"from": get_account(2), "value": value})
+    deposit_tx = staking_monitor.deposit({"from": user_account, "value": value})
     deposit_tx.wait(1)
-    assert account.balance() == 99990000000000000000
+    assert user_account.balance() == 99990000000000000000
     assert (
-        staking_monitor.s_users(account.address)["latestBalance"]
+        staking_monitor.s_users(user_account.address)["latestBalance"]
         == 99990000000000000000
     )
 
@@ -136,13 +136,13 @@ def test_set_balances_to_swap(deploy_staking_monitor_contract):
     percentage_to_swap = 40
 
     set_order_tx = staking_monitor.setOrder(
-        price_limit, percentage_to_swap, {"from": account}
+        price_limit, percentage_to_swap, {"from": user_account}
     )
     set_order_tx.wait(1)
 
     # we mimic a staking reward by sending some ether from another account
-    account_1 = get_account(1)
-    account_1.transfer(account, "10 ether")
+    rewards_distributor = get_account(1)
+    rewards_distributor.transfer(user_account, "1 ether")
     # assert account.balance() == 109990000000000000000
 
     tx = staking_monitor.setBalancesToSwap()
@@ -150,15 +150,61 @@ def test_set_balances_to_swap(deploy_staking_monitor_contract):
     watch_list_entry_for_address = staking_monitor.s_watchList(0)
 
     # Assert
-    assert watch_list_entry_for_address == account.address
+    assert watch_list_entry_for_address == user_account.address
     assert (
-        staking_monitor.s_users(watch_list_entry_for_address)["balanceToSwap"]
-        == 4000000000000000000
+        staking_monitor.s_users(user_account.address)["balanceToSwap"]
+        == 400000000000000000
+    )
+
+
+def test_set_balances_to_swap_accrues(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    user_account = get_account(3)
+    assert user_account.balance() == 100000000000000000000
+    # we deposit into the contract
+    value = Web3.toWei(0.01, "ether")
+    deposit_tx = staking_monitor.deposit({"from": user_account, "value": value})
+    deposit_tx.wait(1)
+    assert user_account.balance() == 99990000000000000000
+    assert (
+        staking_monitor.s_users(user_account.address)["latestBalance"]
+        == 99990000000000000000
     )
 
     # Act
+    # we set the order for this user
+    price_limit = 3000000000000000000
+    # percentage to swap is given in percentages, the portion will be calculated in the contract
+    percentage_to_swap = 40
 
-    # Assert
+    set_order_tx = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": user_account}
+    )
+    set_order_tx.wait(1)
+
+    # we mimic a staking reward by sending some ether from another account
+    rewards_distributor = get_account(1)
+    rewards_distributor.transfer(user_account, "1 ether")
+    # assert account.balance() == 109990000000000000000
+
+    tx = staking_monitor.setBalancesToSwap()
+    tx.wait(1)
+    watch_list_entry_for_address = staking_monitor.s_watchList(0)
+
+    assert watch_list_entry_for_address == user_account.address
+    first_balance_to_swap = staking_monitor.s_users(user_account.address)[
+        "balanceToSwap"
+    ]
+    # we send more ether to user_account to mimic another staking reward
+    rewards_distributor.transfer(user_account, "1 ether")
+    tx = staking_monitor.setBalancesToSwap()
+    tx.wait(1)
+
+    assert (
+        staking_monitor.s_users(user_account.address)["balanceToSwap"]
+        == 400000000000000000 + 400000000000000000
+    )
 
 
 # def test_setting_the_lowest_price_limit_sets_lower_price_limit(
