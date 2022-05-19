@@ -95,6 +95,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
             _amount;
     }
 
+    function withdrawDAI(uint256 _amount) external {
+        DAIToken.transfer(msg.sender, s_users[msg.sender].DAIBalance);
+    }
+
     function getDepositBalance() external view returns (uint256) {
         return s_users[msg.sender].depositBalance;
     }
