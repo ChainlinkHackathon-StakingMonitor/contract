@@ -31,7 +31,7 @@ contract_to_mock = {
     "oracle": MockOracle,
 }
 
-DECIMALS = 18
+DECIMALS = 8
 INITIAL_VALUE = web3.toWei(2000, "ether")
 
 

@@ -81,7 +81,7 @@ def test_can_set_order(deploy_staking_monitor_contract):
     value = Web3.toWei(0.01, "ether")
     deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
     deposit_tx.wait(1)
-    price_limit = 3000000000000000000
+    price_limit = 20000
     # percentage to swap is given in percentages, the portion will be calculated in the contract
     percentage_to_swap = 40
     # Act
@@ -105,7 +105,7 @@ def test_set_order_if_user_has_not_deposited_reverts(
 ):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
-    price_limit = 3000000000000000000
+    price_limit = 2000
     # Act & Assert
     with pytest.raises(exceptions.VirtualMachineError):
         set_order_tx = staking_monitor.setOrder(
@@ -131,7 +131,7 @@ def test_set_balances_to_swap(deploy_staking_monitor_contract):
 
     # Act
     # we set the order for this user
-    price_limit = 3000000000000000000
+    price_limit = 1000
     # percentage to swap is given in percentages, the portion will be calculated in the contract
     percentage_to_swap = 40
 
@@ -174,7 +174,7 @@ def test_set_balances_to_swap_accrues(deploy_staking_monitor_contract):
 
     # Act
     # we set the order for this user
-    price_limit = 3000000000000000000
+    price_limit = 3000
     # percentage to swap is given in percentages, the portion will be calculated in the contract
     percentage_to_swap = 40
 
@@ -228,8 +228,8 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     # we get the latest price
     current_price = staking_monitor.getPrice({"from": get_account()})
 
-    # we make sure that the price limit that will be set in the order is lower than the current price
-    price_limit = current_price - 200000
+    # we make sure that the price limit that will be set in the order is lower than the current price - 8 decimals
+    price_limit = (current_price - 200000) / 100000000
     # percentage to swap is given in percentages, the portion will be calculated in the contract
     percentage_to_swap = 40
 

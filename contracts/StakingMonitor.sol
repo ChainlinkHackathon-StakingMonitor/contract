@@ -32,6 +32,12 @@ contract StakingMonitor is KeeperCompatibleInterface {
         uint256 _percentageSwapped,
         uint256 _ETHPrice
     );
+
+    event NotEnoughDepositedEthForSwap(
+        address indexed _address,
+        uint256 _requiredDepositAmount
+    );
+
     AggregatorV3Interface public priceFeed;
     IERC20 public DAIToken;
     IUniswapV2 public uniswap;
@@ -100,7 +106,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
         s_users[msg.sender].percentageToSwap = _percentageToSwap;
         // priceLimit needs to have same units as what is returned by getPrice
-        s_users[msg.sender].priceLimit = _priceLimit;
+        s_users[msg.sender].priceLimit = _priceLimit * 100000000;
     }
 
     function swapEthForDAI(uint256 amount) public returns (uint256) {
@@ -127,11 +133,29 @@ contract StakingMonitor is KeeperCompatibleInterface {
             // for each address in the watchlist, on each keeper tick, we check if the balance of their actual address has increased.
             // if so, we are allowed to spend their percentage (set in the order) of the difference between the new balance and the old one.
             // this is a placeholder until we get the real staking reward distribution event.
-            s_users[s_watchList[idx]].balanceToSwap +=
-                ((s_watchList[idx].balance -
-                    s_users[s_watchList[idx]].latestBalance) *
-                    s_users[s_watchList[idx]].percentageToSwap) /
-                100;
+            if (
+                s_watchList[idx].balance >
+                s_users[s_watchList[idx]].latestBalance
+            ) {
+                s_users[s_watchList[idx]].balanceToSwap +=
+                    ((s_watchList[idx].balance -
+                        s_users[s_watchList[idx]].latestBalance) *
+                        s_users[s_watchList[idx]].percentageToSwap) /
+                    100;
+                // if their balanceToSwap is larger than their depositBalance, we need to emit
+                // an event that warns them and tells them they have to deposit more eth into
+                // the contract
+                if (
+                    s_users[s_watchList[idx]].balanceToSwap >
+                    s_users[s_watchList[idx]].depositBalance
+                ) {
+                    emit NotEnoughDepositedEthForSwap(
+                        s_watchList[idx],
+                        s_users[s_watchList[idx]].balanceToSwap -
+                            s_users[s_watchList[idx]].depositBalance
+                    );
+                }
+            }
             // we set latestBalance to the current balance
             s_users[s_watchList[idx]].latestBalance = s_watchList[idx].balance;
         }
@@ -157,14 +181,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 //we count that user in for this swap
                 addressesForSwap.push(payable(s_watchList[idx]));
                 totalAmountToSwap += s_users[s_watchList[idx]].balanceToSwap;
-                //emit Swapped(
-                //    s_watchList[idx],
-                //    block.timestamp,
-                //    s_users[s_watchList[idx]].balanceToSwap,
-                //    s_users[s_watchList[idx]].priceLimit,
-                //    s_users[s_watchList[idx]].percentageToSwap,
-                //    currentPrice
-                //);
             }
         }
         // we perform the swap
@@ -180,7 +196,15 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 (totalDAIFromSwap *
                     s_users[addressesForSwap[idx]].balanceToSwap) /
                 totalAmountToSwap;
-            // we reinitialise the balance to swap for the user
+            emit Swapped(
+                addressesForSwap[idx],
+                block.timestamp,
+                s_users[addressesForSwap[idx]].balanceToSwap,
+                s_users[addressesForSwap[idx]].priceLimit,
+                s_users[addressesForSwap[idx]].percentageToSwap,
+                currentPrice
+            );
+            // we reinitialise the balanceToSwap for the user
             s_users[addressesForSwap[idx]].balanceToSwap = 0;
         }
     }
