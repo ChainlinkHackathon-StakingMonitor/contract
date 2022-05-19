@@ -78,8 +78,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         // when user deposits the first time, we set last balance to their current balance...
         // not sure that's the best logic but let's see
         if (s_users[msg.sender].depositBalance == 0) {
-            // not sure if msg.value is already deducted from msg.sender.balance...
-            s_users[msg.sender].latestBalance = msg.sender.balance - msg.value;
+            s_users[msg.sender].latestBalance = msg.sender.balance;
         }
 
         //TODO: somehow check if address is already watched
