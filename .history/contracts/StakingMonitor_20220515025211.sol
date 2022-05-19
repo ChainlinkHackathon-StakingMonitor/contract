@@ -14,20 +14,20 @@ error StakeMonitor__TransferFailed();
 error StakingMonitor__UpperBond_SmallerThan_LowerBound();
 error StakeMonitor__UserHasntDepositedETH();
 
+
+
 contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     struct userInfo {
-    uint256 depositBalance; 
-    uint256 DAIBalance; 
+    uint256 depositBalance;
+    uint256 DAIBalance;
     uint256 priceLimit;
-    uint256 balanceInside; 
     uint256 balanceToSpend;
     uint256 latestBalance; 
     }
 
     mapping(address => userInfo) public userInfos;  
     event Deposited(address indexed user);
-    event Withdrawn(address indexed user); 
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
@@ -39,7 +39,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
       _;
    }
 
-    constructor(address _priceFeed) payable {
+    constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
     }
 
@@ -62,47 +62,45 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
-        userInfos[msg.sender].depositBalance += msg.value; 
+        userInfos[msg.sender].depositBalance =
+            userInfos[msg.sender].depositBalance +
+            msg.value;
         emit Deposited(msg.sender);
     }
-
+   
     function withdraw() public onlyStaker() {
-        userInfos[msg.sender].depositBalance =- msg.value; 
-        emit Withdrawn(msg.sender); 
+        userInfos[msg.sender].depositBalance =+ msg.value;
+        //(bool success, ) = msg.sender.call.value()
+        emit Deposited(msg.sender);
     }
 
     function getBalance() external view returns (uint256) {
         return userInfos[msg.sender].depositBalance;
     }
 
-    function getBalanceOfUser() internal view returns (uint256){
-        userInfos[msg.sender].balanceInside += userInfos[msg.sender].depositBalance - withdraw(msg.value); 
-        return userInfos[msg.sender].balanceInside; 
-    }
- 
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
         if (userInfos[msg.sender].depositBalance == 0) {
             revert StakeMonitor__UserHasntDepositedETH();
         }
+
+        userInfos[msg.sender].priceLimit = _priceLimit;
+
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
         if ((s_lowestPriceLimit == 0) || (s_lowestPriceLimit > _priceLimit)) {
             s_lowestPriceLimit = _priceLimit;
         }
-        userInfos[msg.sender].priceLimit = _priceLimit;
     }
 
-    //@notice Set the balance to spend for each user 
     function setBalancesToSpend() external {
         for (uint256 index = 0; index < s_watchList.length; index++) {
             // for each address in the watchlist, we check if the balance has increased.
             // if so, we are allowed to spend the difference between the new balance and the old one
             userInfos[s_watchList[idx]].balanceToSpend = (s_watchList[idx]
-                .balance - userInfos[s_watchList[idx]].latestBalance);
+                .balanceOf() - userInfos[s_watchList[idx]].latestBalance);
         }
     }
 
-    //@notice 
     function checkLowestLimitUnderCurrentPrice() public view returns (bool) {
         uint price = getPrice();
         bool upkeepNeeded = (s_lowestPriceLimit < price);

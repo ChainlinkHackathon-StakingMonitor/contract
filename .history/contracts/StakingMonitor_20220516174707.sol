@@ -14,20 +14,20 @@ error StakeMonitor__TransferFailed();
 error StakingMonitor__UpperBond_SmallerThan_LowerBound();
 error StakeMonitor__UserHasntDepositedETH();
 
+
+
 contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     struct userInfo {
-    uint256 depositBalance; 
-    uint256 DAIBalance; 
+    uint256 depositBalance; // deposited balance
+    uint256 DAIBalance; // 
     uint256 priceLimit;
-    uint256 balanceInside; 
     uint256 balanceToSpend;
     uint256 latestBalance; 
     }
 
     mapping(address => userInfo) public userInfos;  
     event Deposited(address indexed user);
-    event Withdrawn(address indexed user); 
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
@@ -39,7 +39,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
       _;
    }
 
-    constructor(address _priceFeed) payable {
+    constructor(address _priceFeed) {
         priceFeed = AggregatorV3Interface(_priceFeed);
     }
 
@@ -63,23 +63,21 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
         userInfos[msg.sender].depositBalance += msg.value; 
+            
         emit Deposited(msg.sender);
     }
-
+   
     function withdraw() public onlyStaker() {
-        userInfos[msg.sender].depositBalance =- msg.value; 
-        emit Withdrawn(msg.sender); 
+        userInfos[msg.sender].depositBalance =+ msg.value;
+        //(bool success, ) = msg.sender.call.value()
+        emit Deposited(msg.sender);
+
     }
 
     function getBalance() external view returns (uint256) {
         return userInfos[msg.sender].depositBalance;
     }
 
-    function getBalanceOfUser() internal view returns (uint256){
-        userInfos[msg.sender].balanceInside += userInfos[msg.sender].depositBalance - withdraw(msg.value); 
-        return userInfos[msg.sender].balanceInside; 
-    }
- 
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
         if (userInfos[msg.sender].depositBalance == 0) {

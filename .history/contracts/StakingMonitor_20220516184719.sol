@@ -17,7 +17,7 @@ error StakeMonitor__UserHasntDepositedETH();
 contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     struct userInfo {
-    uint256 depositBalance; 
+    uint256 depositBalance; // deposited balance
     uint256 DAIBalance; 
     uint256 priceLimit;
     uint256 balanceInside; 
@@ -27,7 +27,6 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     mapping(address => userInfo) public userInfos;  
     event Deposited(address indexed user);
-    event Withdrawn(address indexed user); 
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
@@ -67,8 +66,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
     }
 
     function withdraw() public onlyStaker() {
-        userInfos[msg.sender].depositBalance =- msg.value; 
-        emit Withdrawn(msg.sender); 
+
     }
 
     function getBalance() external view returns (uint256) {
