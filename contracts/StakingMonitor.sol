@@ -214,6 +214,12 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 s_users[addressesForSwap[idx]].percentageToSwap,
                 currentPrice
             );
+            // we substract the balanceToSwap from the user's
+            // depositBalance
+            s_users[addressesForSwap[idx]].depositBalance -= s_users[
+                addressesForSwap[idx]
+            ].balanceToSwap;
+
             // we reinitialise the balanceToSwap for the user
             s_users[addressesForSwap[idx]].balanceToSwap = 0;
         }
