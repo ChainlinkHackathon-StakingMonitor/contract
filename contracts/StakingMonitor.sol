@@ -17,10 +17,9 @@ error StakeMonitor__UserHasntDepositedETH();
 contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     struct userInfo {
-    uint256 depositBalance; 
+    uint256 liveBalance; 
     uint256 DAIBalance; 
     uint256 priceLimit;
-    uint256 balanceInside; 
     uint256 balanceToSpend;
     uint256 latestBalance; 
     }
@@ -54,31 +53,29 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
      * Accountability of Staking Monitor Logic 
     *************************************************************************/
 
+    /// @notice add the deposit amount to the latestBalance info 
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...
         // not sure that's the best logic but let's see
-        if (userInfos[msg.sender].depositBalance == 0) {
+        if (userInfos[msg.sender].liveBalance == 0) {
             userInfos[msg.sender].latestBalance = msg.sender.balance;
         }
 
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
-        userInfos[msg.sender].depositBalance += msg.value; 
+        userInfos[msg.sender].liveBalance += msg.value; 
         emit Deposited(msg.sender);
     }
 
+    /// @notice get the balance of msg.sender 
     function getBalance() external view returns (uint256) {
-        return userInfos[msg.sender].depositBalance;
+        return userInfos[msg.sender].liveBalance;
     }
 
-    function getBalanceOfUser() internal view returns (uint256){
-        userInfos[msg.sender].balanceInside += userInfos[msg.sender].depositBalance - withdraw(msg.value); 
-        return userInfos[msg.sender].balanceInside; 
-    }
- 
+    /// @notice user sets priceLimit 
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
-        if (userInfos[msg.sender].depositBalance == 0) {
+        if (userInfos[msg.sender].liveBalance == 0) {
             revert StakeMonitor__UserHasntDepositedETH();
         }
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
@@ -89,7 +86,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         emit limitPrice(msg.sender);
     }
 
-    //@notice Set the balance to spend for each user 
+    /// @notice Set the balance to spend for each user 
     function setBalancesToSpend() external {
         for (uint256 index = 0; index < s_watchList.length; index++) {
             // for each address in the watchlist, we check if the balance has increased.
@@ -99,28 +96,28 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         }
     }
 
-    //@notice get balanceToSpend 
+    /// @notice get balanceToSpend 
     function getBalanceToSpend() public view returns(bool) {
         for (uint256 index = 0; index < s_watchList.length; index++) {
             userInfos[s_watchList[index]].balanceToSpend = setBalancesToSpend();
         }
         return true; 
     }
-    
-    function withdraw() public {
+    /// @notice withdraw a specified amount 
+    function withdraw(uint256 _amount) public {
         require(getBalanceToSpend == true) ;
-        userInfos[msg.sender].depositBalance =- msg.value; 
-        userInfos[msg.sender];
+        userInfos[msg.sender].liveBalance =- _amount; 
         emit Withdrawn(msg.sender); 
     }
 
-    //@notice 
+    /// @notice checking the priceLimit 
     function checkLowestLimitUnderCurrentPrice() public view returns (bool) {
         uint price = getPrice();
         bool upkeepNeeded = (s_lowestPriceLimit < price);
         return upkeepNeeded;
     }
 
+    /// @notice Chainlink check 
     function checkUpkeep(bytes calldata checkData)
         external
         override
@@ -133,6 +130,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         performData = checkData;
     }
 
+    /// @notice Chainlink check 
     function performUpkeep(bytes calldata performData) external override {
         // iterate over users price limits
         // trigger the sale if current ether price is above price limit for user
