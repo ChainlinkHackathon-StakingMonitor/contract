@@ -240,6 +240,7 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     set_order_tx_2 = staking_monitor.setOrder(
         price_limit, percentage_to_swap, {"from": user_account_2}
     )
+    set_order_tx_2.wait(1)
 
     # we mimic a staking reward by sending some ether from another account
     rewards_distributor = get_account(1)
@@ -256,6 +257,10 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
         staking_monitor.s_users(user_account.address)["balanceToSwap"]
         == 400000000000000000
     )
+    assert (
+        staking_monitor.s_users(user_account_2.address)["balanceToSwap"]
+        == 400000000000000000
+    )
 
     # Act
     tx = staking_monitor.checkConditionsAndPerformSwap({"from": get_account()})
@@ -264,7 +269,7 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     # Assert
     assert staking_monitor.s_users(user_account.address)["priceLimit"] < current_price
     assert (
-        staking_monitor.s_users(user_account.address)["DAIBalance"] == 500000000000000
+        staking_monitor.s_users(user_account.address)["DAIBalance"] == 250000000000000
     )
     assert staking_monitor.s_users(user_account.address)["balanceToSwap"] == 0
 

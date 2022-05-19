@@ -169,17 +169,17 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
         // we perform the swap
         if (totalAmountToSwap > 0) {
-            //totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
             totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
+            //totalDAIFromSwap = 500000000000000;
         }
         // we distribute the DAI balances among participants
         for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
             // the new DAIBalance of each swap participant
             // increases by their share of the totalAmountToSwap
             s_users[addressesForSwap[idx]].DAIBalance +=
-                totalDAIFromSwap *
-                (s_users[addressesForSwap[idx]].balanceToSwap /
-                    totalAmountToSwap);
+                (totalDAIFromSwap *
+                    s_users[addressesForSwap[idx]].balanceToSwap) /
+                totalAmountToSwap;
             // we reinitialise the balance to swap for the user
             s_users[addressesForSwap[idx]].balanceToSwap = 0;
         }
