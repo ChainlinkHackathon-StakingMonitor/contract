@@ -27,7 +27,8 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     mapping(address => userInfo) public userInfos;  
     event Deposited(address indexed user);
-    event Withdrawn(address indexed user); 
+    event Withdrawn(address indexed user);
+    event limitPrice(address indexed user); 
     AggregatorV3Interface public priceFeed;
 
     uint256 public s_lowestPriceLimit;
@@ -66,11 +67,6 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         emit Deposited(msg.sender);
     }
 
-    function withdraw() public onlyStaker() {
-        userInfos[msg.sender].depositBalance =- msg.value; 
-        emit Withdrawn(msg.sender); 
-    }
-
     function getBalance() external view returns (uint256) {
         return userInfos[msg.sender].depositBalance;
     }
@@ -90,6 +86,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
             s_lowestPriceLimit = _priceLimit;
         }
         userInfos[msg.sender].priceLimit = _priceLimit;
+        emit limitPrice(msg.sender);
     }
 
     //@notice Set the balance to spend for each user 
@@ -97,9 +94,24 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
         for (uint256 index = 0; index < s_watchList.length; index++) {
             // for each address in the watchlist, we check if the balance has increased.
             // if so, we are allowed to spend the difference between the new balance and the old one
-            userInfos[s_watchList[idx]].balanceToSpend = (s_watchList[idx]
-                .balance - userInfos[s_watchList[idx]].latestBalance);
+            userInfos[s_watchList[index]].balanceToSpend = (s_watchList[index]
+                .balance - userInfos[s_watchList[index]].latestBalance);
         }
+    }
+
+    //@notice get balanceToSpend 
+    function getBalanceToSpend() public view returns(bool) {
+        for (uint256 index = 0; index < s_watchList.length; index++) {
+            userInfos[s_watchList[index]].balanceToSpend = setBalancesToSpend();
+        }
+        return true; 
+    }
+    
+    function withdraw() public {
+        require(getBalanceToSpend == true) ;
+        userInfos[msg.sender].depositBalance =- msg.value; 
+        userInfos[msg.sender];
+        emit Withdrawn(msg.sender); 
     }
 
     //@notice 
