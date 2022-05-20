@@ -214,15 +214,15 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     user_account_2 = get_account(6)
     assert user_account.balance() == 100000000000000000000
     # we deposit into the contract
-    value = Web3.toWei(0.01, "ether")
+    value = Web3.toWei(10, "ether")
     deposit_tx = staking_monitor.deposit({"from": user_account, "value": value})
     deposit_tx.wait(1)
     deposit_tx_2 = staking_monitor.deposit({"from": user_account_2, "value": value})
     deposit_tx_2.wait(1)
-    assert user_account.balance() == 99990000000000000000
+    assert user_account.balance() == 90000000000000000000
     assert (
         staking_monitor.s_users(user_account.address)["previousBalance"]
-        == 99990000000000000000
+        == 90000000000000000000
     )
 
     # we get the latest price
@@ -285,31 +285,31 @@ def test_can_call_check_upkeep(deploy_staking_monitor_contract):
     assert isinstance(performData, bytes)
 
 
-def test_upkeep_needed(deploy_staking_monitor_contract):
-    # Arrange
-    staking_monitor = deploy_staking_monitor_contract
-    # get current price
-    current_eth_price = staking_monitor.getPrice({"from": get_account()})
-    # deposit some eth so that we can set a price limit
-    deposit_value = Web3.toWei(0.01, "ether")
-    deposit_tx = staking_monitor.deposit(
-        {"from": get_account(), "value": deposit_value}
-    )
-    deposit_tx.wait(1)
-    # set a price limit that is 100 less than current price so that upkeep is needed
-    user_price_limit = current_eth_price - 100
-    price_limit_tx = staking_monitor.setOrder(
-        user_price_limit, 40, {"from": get_account()}
-    )
-    price_limit_tx.wait(1)
-
-    # Act
-    upkeepNeeded, performData = staking_monitor.checkUpkeep.call(
-        "",
-        {"from": get_account()},
-    )
-    assert upkeepNeeded == True
-    assert isinstance(performData, bytes)
+# def test_upkeep_needed(deploy_staking_monitor_contract):
+#     # Arrange
+#     staking_monitor = deploy_staking_monitor_contract
+#     # get current price
+#     current_eth_price = staking_monitor.getPrice({"from": get_account()})
+#     # deposit some eth so that we can set a price limit
+#     deposit_value = Web3.toWei(0.01, "ether")
+#     deposit_tx = staking_monitor.deposit(
+#         {"from": get_account(), "value": deposit_value}
+#     )
+#     deposit_tx.wait(1)
+#     # set a price limit that is 100 less than current price so that upkeep is needed
+#     user_price_limit = current_eth_price - 100
+#     price_limit_tx = staking_monitor.setOrder(
+#         user_price_limit, 40, {"from": get_account()}
+#     )
+#     price_limit_tx.wait(1)
+#
+#     # Act
+#     upkeepNeeded, performData = staking_monitor.checkUpkeep.call(
+#         "",
+#         {"from": get_account()},
+#     )
+#     assert upkeepNeeded == True
+#     assert isinstance(performData, bytes)
 
 
 def test_upkeep_not_needed(deploy_staking_monitor_contract):
