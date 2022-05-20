@@ -2,7 +2,6 @@
 
 ![staking_monitor_ui](./img/staking_monitor_ui.png)
 
-
 This is a repo to work with and use Chainlink smart contracts in a python environment. If you're brand new to Chainlink, check out the beginner walk-through in remix to [learn the basics.](https://docs.chain.link/docs/beginners-tutorial)
 
 You can also check out the more advanced Chainlink tutorials there as well.
@@ -13,10 +12,6 @@ You can also check out the more advanced Chainlink tutorials there as well.
   - [Testnet Development](#testnet-development)
   - [Local Development](#local-development)
   - [Running Scripts and Deployment](#running-scripts-and-deployment)
-    - [Chainlink Price Feeds](#chainlink-price-feeds)
-    - [Chainlink VRF](#chainlink-vrf)
-    - [Chainlink API Call](#chainlink-api-call)
-    - [Chainlink Keeper Deployment](#chainlink-keeper-deployment)
     - [Local Development](#local-development-1)
   - [Testing](#testing)
     - [To test development / local](#to-test-development--local)
@@ -26,7 +21,7 @@ You can also check out the more advanced Chainlink tutorials there as well.
   - [Linting](#linting)
   - [Resources](#resources)
   - [License](#license)
-
+ 
 ## Prerequisites
 
 Please install or have installed the following:
@@ -114,60 +109,7 @@ This mix provides a simple template for working with Chainlink Smart Contracts. 
 
 > NOTE: It's highly encouraged that you work with a local chain before testing on a testnet. You'll be a much faster developer!
 
-### Chainlink Price Feeds
-
-This will deploy a smart contract to kovan and then read you the latest price via [Chainlink Price Feeds](https://docs.chain.link/docs/get-the-latest-price).
-```
-brownie run scripts/price_feed_scripts/01_deploy_price_consumer_v3.py --network kovan
-brownie run scripts/price_feed_scripts/02_read_price_feed.py --network kovan
-```
-Or, you can use [ENS](https://docs.chain.link/docs/ens)
-```
-brownie run scripts/price_feed_scripts/02_read_price_feed_with_ens.py --network kovan
-```
-
-Otherwise, you can fork mainnet and use that in a local ganache development environment.
-```bash
-brownie console --network mainnet-fork
->>> price_feeds = PriceFeedConsumer.deploy('0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419', {'from': accounts[0]})
-.
-.
->>> latest_price = price_feeds.getLatestPrice()
->>> latest_price
-59169208540
-```
-
-You can also use [ENS](https://docs.chain.link/docs/ens) to get prices. See the [ens price feed script](./scripts/price_feed_scripts/read_price_with_ens.py) for more information.
-
-### Chainlink VRF
-
-This will deploy a smart contract to kovan and get a Random number via [Chainlink VRF](https://docs.chain.link/docs/get-a-random-number).
-```
-brownie run scripts/vrf_scripts/01_deploy_vrf.py --network kovan
-brownie run scripts/vrf_scripts/02_request_randomness.py --network kovan
-brownie run scripts/vrf_scripts/03_read_random_number.py --network kovan
-```
-
-### Chainlink API Call
-
-
-This will deploy a smart contract to kovan and then make an API call via [Chainlink API Call](https://docs.chain.link/docs/make-a-http-get-request).
-```
-brownie run scripts/chainlink_api_scripts/01_deploy_api_consumer.py --network kovan
-brownie run scripts/chainlink_api_scripts/02_request_api.py --network kovan
-brownie run scripts/chainlink_api_scripts/03_read_data.py --network kovan
-```
-
-### Chainlink Keeper Deployment
-
-
-This is just to show you how to deploy the Keepers, you can learn more about registering them in the [Chainlink Keeper](https://docs.chain.link/docs/chainlink-keepers/compatible-contracts/) documentation.
-```
-brownie run scripts/keeper_scripts/01_deploy_keeper_counter.py --network kovan
-brownie run scripts/keeper_scripts/02_check_upkeep.py --network kovan
-```
-
-
+ 
 ### Local Development
 
 For local development, you might want to deploy mocks. You can run the script to deploy mocks. Depending on your setup, it might make sense to *not* deploy mocks if you're looking to fork a mainnet. It all depends on what you're looking to do though. Right now, the scripts automatically deploy a mock so they can run.
