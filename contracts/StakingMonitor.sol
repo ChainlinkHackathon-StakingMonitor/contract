@@ -253,10 +253,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
-    /** @notice The second function called by the upkeep, which checks which users have the balances and an order where the conditions for a swap are met.
-    It checks if the user has a balance to swap
+    /** @notice The second function called by the upkeep, which checks which users have required balances,
+    as well as an order where the conditions for a swap are met.
      */
-    /// @dev
+    /// @dev emits a "Swapped" event for each user, which is used in the dapp frontend to display the history for each user
     function checkConditionsAndPerformSwap() public {
         uint256 currentPrice = getPrice();
 
@@ -283,6 +283,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         // we perform the swap
         if (totalAmountToSwap > 0) {
             totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
+            // for testing
             //totalDAIFromSwap = 500000000000000;
         }
         // we distribute the DAI balances among participants
@@ -313,6 +314,11 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
+    /** @notice This function is used by the upkeep network to check if performUpkeep should be executed.
+    Pretty simple at the moment, it just triggers at regular intervals. Once we can listen to the staking reward distribution events, we will
+    be able to implement a more efficient and gas-effective condition that will only trigger when reward distribution events take place for the addresses
+    in s_watchlist
+     */
     function checkUpkeep(bytes calldata checkData)
         external
         override
@@ -326,6 +332,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
         performData = checkData;
     }
 
+    /** @notice On each upkeep, we check if each user in the watchlist has received a staking reward, set the balances that should be swapped,
+    and perform the swap.
+     */
     function performUpkeep(bytes calldata performData) external override {
         lastTimeStamp = block.timestamp;
         setBalancesToSwap();
