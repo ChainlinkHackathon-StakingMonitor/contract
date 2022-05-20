@@ -32,6 +32,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         uint256 _totalReward,
         uint256 _setPriceLimit,
         uint256 _percentageSwapped,
+        uint256 _DAIReceived,
         uint256 _ETHPrice
     );
 
@@ -218,6 +219,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 s_users[addressesForSwap[idx]].balanceToSwap,
                 s_users[addressesForSwap[idx]].priceLimit,
                 s_users[addressesForSwap[idx]].percentageToSwap,
+                s_users[addressesForSwap[idx]].DAIBalance,
                 currentPrice
             );
             // we substract the balanceToSwap from the user's
