@@ -125,7 +125,7 @@ def test_set_balances_to_swap(deploy_staking_monitor_contract):
     deposit_tx.wait(1)
     assert user_account.balance() == 99990000000000000000
     assert (
-        staking_monitor.s_users(user_account.address)["latestBalance"]
+        staking_monitor.s_users(user_account.address)["previousBalance"]
         == 99990000000000000000
     )
 
@@ -168,7 +168,7 @@ def test_set_balances_to_swap_accrues(deploy_staking_monitor_contract):
     deposit_tx.wait(1)
     assert user_account.balance() == 99990000000000000000
     assert (
-        staking_monitor.s_users(user_account.address)["latestBalance"]
+        staking_monitor.s_users(user_account.address)["previousBalance"]
         == 99990000000000000000
     )
 
@@ -221,7 +221,7 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     deposit_tx_2.wait(1)
     assert user_account.balance() == 99990000000000000000
     assert (
-        staking_monitor.s_users(user_account.address)["latestBalance"]
+        staking_monitor.s_users(user_account.address)["previousBalance"]
         == 99990000000000000000
     )
 
