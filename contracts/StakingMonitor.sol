@@ -38,6 +38,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
     event Deposited(address indexed user, uint256 _amount);
     event WithdrawnETH(address indexed user, uint256 _amount);
     event WithdrawnDAI(address indexed user, uint256 _amount);
+    event TotalAmountOutput(uint256 _amount);
     event Swapped(
         address indexed _address,
         uint256 _timestamp,
@@ -201,11 +202,12 @@ contract StakingMonitor is KeeperCompatibleInterface {
         uint256 userBalanceToSwap,
         uint256 totalAmount
     ) public pure returns (uint256) {
-        return (
-            ABDKMath64x64.toUInt(
-                ABDKMath64x64.divu(totalToken * userBalanceToSwap, totalAmount)
-            )
-        );
+        //return (
+        //    ABDKMath64x64.toUInt(
+        //        ABDKMath64x64.divu(totalToken * userBalanceToSwap, totalAmount)
+        //    )
+        //);
+        return ((totalToken * userBalanceToSwap) / totalAmount);
     }
 
     /** @notice The first function called by the upkeep, which compares the current balance of each user's address with the previous one,
@@ -282,9 +284,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
         // we perform the swap
         if (totalAmountToSwap > 0) {
+            emit TotalAmountOutput(totalAmountToSwap);
             totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
             // for testing
-            //totalDAIFromSwap = 50000000000000000;
         }
         // we distribute the DAI balances among participants
         for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {

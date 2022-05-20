@@ -279,6 +279,10 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
         staking_monitor.s_users(first_user_account.address)["DAIBalance"]
         == 13333333333333333
     )
+    assert (
+        staking_monitor.s_users(second_user_account.address)["DAIBalance"]
+        == 36666666666666666
+    )
     assert staking_monitor.s_users(first_user_account.address)["balanceToSwap"] == 0
 
 
