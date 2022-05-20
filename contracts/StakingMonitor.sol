@@ -8,30 +8,41 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IUniswapV2.sol";
 import "./ABDKMath64x64.sol";
 
-error StakeMonitor__UpkeepNotNeeded();
-error StakeMonitor__TransferFailed();
-error StakeMonitor__UserHasntDepositedETH();
-error StakeMonitor_NotEnoughDAIInBalance();
+error StakingMonitor__UpkeepNotNeeded();
+error StakingMonitor__TransferFailed();
+error StakingMonitor__UserHasntDepositedETH();
+error StakingMonitor__NotEnoughETHInUsersBalance();
+error StakingMonitor_NotEnoughDAIInUsersBalance();
 
 struct userData {
     bool created;
+    bool enoughDepositForSwap;
     uint256 depositBalance;
     uint256 DAIBalance;
     uint256 priceLimit;
     uint256 percentageToSwap;
     uint256 balanceToSwap;
-    uint256 latestBalance;
+    uint256 previousBalance;
 }
 
+/// @title Staking Monitor
+/// @author Pascal Belouin
+/** @notice This contract watches addresses stored in s_watchlist using Chainlink Keepers and, using Uniswap V2, swaps a deposited, "mirrored" version of the 
+balance change for DAI (stored in s_users), which it interprets as a staking reward. After each swap, it distributes the DAI among the users' DAI Balances
+within the contract. The users can then withdraw their DAI balance at any point if they wish. Please note that the balances changes are used in lieu of 
+listening to actual staking reward events being emitted, which we plan to implement in the future when Chainlink and Chainlink Keeper is available on Moonbeam.
+*/
 contract StakingMonitor is KeeperCompatibleInterface {
-    event Deposited(address indexed user);
-    // we only stored the following in the event, the rest is calculated in the front end
+    using ABDKMath64x64 for int128;
+
+    event Deposited(address indexed user, uint256 _amount);
+    event WithdrawnETH(address indexed user, uint256 _amount);
+    event WithdrawnDAI(address indexed user, uint256 _amount);
     event Swapped(
         address indexed _address,
         uint256 _timestamp,
         uint256 _totalReward,
         uint256 _setPriceLimit,
-        uint256 _percentageSwapped,
         uint256 _DAIReceived,
         uint256 _ETHPrice
     );
@@ -42,8 +53,8 @@ contract StakingMonitor is KeeperCompatibleInterface {
     );
 
     AggregatorV3Interface public priceFeed;
-    IERC20 public DAIToken;
-    IUniswapV2 public uniswap;
+    IERC20 public immutable DAIToken;
+    IUniswapV2 public immutable uniswap;
 
     uint256 public lastTimeStamp;
     uint256 public immutable interval;
@@ -70,19 +81,19 @@ contract StakingMonitor is KeeperCompatibleInterface {
         uniswap = IUniswapV2(_uniswap);
     }
 
+    /// @notice Gets the price of network currency in USD
+    /// @dev the price is returned with 8 decimal values
     function getPrice() public view returns (uint256) {
         (, int256 answer, , , ) = priceFeed.latestRoundData();
         return uint256(answer);
     }
 
+    /// @notice Allows users to deposit some network currency.
+    /** @dev  It creates data for user in the s_users map of structs if it doesn't exist yet, and adds the user's address to the watchlist. 
+    Finally, it adds the amount deposited to the contract's user's balance.
+    */
     function deposit() external payable {
-        // when user deposits the first time, we set last balance to their current balance...
-        // not sure that's the best logic but let's see
-        if (s_users[msg.sender].depositBalance == 0) {
-            s_users[msg.sender].latestBalance = msg.sender.balance;
-        }
-
-        //TODO: somehow check if address is already watched
+        // we check if we already have user data for this user
         if (!s_users[msg.sender].created) {
             s_watchList.push(msg.sender);
         }
@@ -90,42 +101,63 @@ contract StakingMonitor is KeeperCompatibleInterface {
         s_users[msg.sender].depositBalance =
             s_users[msg.sender].depositBalance +
             msg.value;
-        emit Deposited(msg.sender);
+        // we update previousBalance for the user.
+        s_users[msg.sender].previousBalance = msg.sender.balance;
+        emit Deposited(msg.sender, msg.value);
     }
 
+    /// @notice Allows users to withdraw an amount of their main network currency balance.
+    /// @dev  _amount is removed from their internal contract balance.
     function withdrawETH(uint256 _amount) external {
+        if (_amount > s_users[msg.sender].depositBalance) {
+            revert StakingMonitor__NotEnoughETHInUsersBalance();
+        }
         s_users[msg.sender].depositBalance =
             s_users[msg.sender].depositBalance -
             _amount;
+        payable(msg.sender).transfer(_amount);
+        // we update previousBalance for the user.
+        s_users[msg.sender].previousBalance = msg.sender.balance;
+        emit WithdrawnETH(msg.sender, _amount);
     }
 
+    /// @notice Allows users to withdraw an amount of their DAI balance.
+    /// @dev  _amount is removed from their internal contract balance.
     function withdrawDAI(uint256 _amount) external {
-        if (_amount <= s_users[msg.sender].DAIBalance) {
-            s_users[msg.sender].DAIBalance -= _amount;
-            DAIToken.transfer(msg.sender, _amount);
-        } else {
-            revert StakeMonitor_NotEnoughDAIInBalance();
+        if (_amount > s_users[msg.sender].DAIBalance) {
+            revert StakingMonitor_NotEnoughDAIInUsersBalance();
         }
+
+        s_users[msg.sender].DAIBalance -= _amount;
+        DAIToken.transfer(msg.sender, _amount);
+        emit WithdrawnDAI(msg.sender, _amount);
     }
 
+    /// @notice Gets the calling user main network currency balance
     function getDepositBalance() external view returns (uint256) {
         return s_users[msg.sender].depositBalance;
     }
 
+    /// @notice Gets the calling user DAI balance
     function getDAIBalance() external view returns (uint256) {
         return s_users[msg.sender].DAIBalance;
     }
 
+    /** @notice Allows users to set the minimum price at which a swap of a portion of their deposit main network currency should take place. 
+    They can also set the percentage of their staking rewards that should be swapped for DAI on their behalf.
+    */
+    /// @dev We add 8 decimals to the priceLimit they enter, to match the decimals returned by getPrice.
     function setOrder(uint256 _priceLimit, uint256 _percentageToSwap) external {
         // a user cannot set a price limit if they haven't deposited some eth
         if (s_users[msg.sender].depositBalance == 0) {
-            revert StakeMonitor__UserHasntDepositedETH();
+            revert StakingMonitor__UserHasntDepositedETH();
         }
         s_users[msg.sender].percentageToSwap = _percentageToSwap;
         // priceLimit needs to have same units as what is returned by getPrice
         s_users[msg.sender].priceLimit = _priceLimit * 100000000;
     }
 
+    /// @notice Swaps ETH for DAI using Uniswap V2, and returns the amount of DAI that resulted from the swap.
     function swapEthForDAI(uint256 amount) public returns (uint256) {
         address[] memory path = new address[](2);
         path[0] = uniswap.WETH();
@@ -136,7 +168,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         tokenAmount_ = uniswap.swapExactETHForTokens{value: amount}(
             0,
             path,
-            address(this), // The contract
+            address(this),
             block.timestamp
         );
         uint256 outputTokenCount = uint256(
@@ -145,23 +177,63 @@ contract StakingMonitor is KeeperCompatibleInterface {
         return outputTokenCount;
     }
 
+    /// @notice Utility pure function that calculates the balance we should swap for a user
+    /// @dev makes use of the ABDKMath64x64 library
+    function calculateUserBalanceToSwap(
+        uint256 currentBalance,
+        uint256 previousBalance,
+        uint256 orderPercentageToSwap
+    ) public pure returns (uint256) {
+        return (
+            ABDKMath64x64.toUInt(
+                ABDKMath64x64.divu(
+                    (currentBalance - previousBalance) * orderPercentageToSwap,
+                    100
+                )
+            )
+        );
+    }
+
+    /// @notice Utility pure function that calculates the share of a swap a user should receive
+    /// @dev makes use of the ABDKMath64x64 library
+    function calculateUserSwapShare(
+        uint256 totalToken,
+        uint256 userBalanceToSwap,
+        uint256 totalAmount
+    ) public pure returns (uint256) {
+        return (
+            ABDKMath64x64.toUInt(
+                ABDKMath64x64.divu(totalToken * userBalanceToSwap, totalAmount)
+            )
+        );
+    }
+
+    /** @notice The first function called by the upkeep, which compares the current balance of each user's address with the previous one,
+    which we either got when they deposited or withdrew main network currency from the contract, or at the last upkeep. It interprets
+    this difference as the user having received a staking reward on their address. We then calculate the portion of this reward that should be 
+    swapped for DAI, by dividing it by the percentageToSwap value they have set in their order.
+     */
+    /** @dev For each address in the watchlist, on each upkeep, we check if the balance of their actual address has increased.
+    if so, we add the percentage (set in the order) of the difference between the new balance and the old one to their
+    balanceToSwap, which will be swapped the next time the price of the main network currency is above the price limit
+    set in their order. This is a workaround until we get the actual staking reward distribution event.
+    */
     function setBalancesToSwap() public {
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
-            // for each address in the watchlist, on each keeper tick, we check if the balance of their actual address has increased.
-            // if so, we are allowed to spend their percentage (set in the order) of the difference between the new balance and the old one.
-            // this is a placeholder until we get the real staking reward distribution event.
             if (
                 s_watchList[idx].balance >
-                s_users[s_watchList[idx]].latestBalance
+                s_users[s_watchList[idx]].previousBalance
             ) {
-                s_users[s_watchList[idx]].balanceToSwap +=
-                    ((s_watchList[idx].balance -
-                        s_users[s_watchList[idx]].latestBalance) *
-                        s_users[s_watchList[idx]].percentageToSwap) /
-                    100;
-                // if their balanceToSwap is larger than their depositBalance, we need to emit
-                // an event that warns them and tells them they have to deposit more eth into
-                // the contract
+                s_users[s_watchList[idx]]
+                    .balanceToSwap += calculateUserBalanceToSwap(
+                    s_watchList[idx].balance,
+                    s_users[s_watchList[idx]].previousBalance,
+                    s_users[s_watchList[idx]].percentageToSwap
+                );
+                // if a user's balanceToSwap is larger than their depositBalance, we need to emit
+                // an event that warns them that they have to deposit more eth into
+                // the contract for their swap to take place.
+                // otherwise, we set the flag "enoughDepositForSwap" to true
                 if (
                     s_users[s_watchList[idx]].balanceToSwap >
                     s_users[s_watchList[idx]].depositBalance
@@ -171,13 +243,20 @@ contract StakingMonitor is KeeperCompatibleInterface {
                         s_users[s_watchList[idx]].balanceToSwap -
                             s_users[s_watchList[idx]].depositBalance
                     );
+                } else {
+                    s_users[s_watchList[idx]].enoughDepositForSwap = true;
                 }
             }
-            // we set latestBalance to the current balance
-            s_users[s_watchList[idx]].latestBalance = s_watchList[idx].balance;
+            // we set previousBalance to the current balance
+            s_users[s_watchList[idx]].previousBalance = s_watchList[idx]
+                .balance;
         }
     }
 
+    /** @notice The second function called by the upkeep, which checks which users have the balances and an order where the conditions for a swap are met.
+    It checks if the user has a balance to swap
+     */
+    /// @dev
     function checkConditionsAndPerformSwap() public {
         uint256 currentPrice = getPrice();
 
@@ -192,6 +271,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
             // check the order conditions for each user in watchlist and trigger a swap if conditions are satisfied
             if (
+                s_users[s_watchList[idx]].enoughDepositForSwap &&
                 s_users[s_watchList[idx]].balanceToSwap > 0 &&
                 currentPrice > s_users[s_watchList[idx]].priceLimit
             ) {
@@ -209,16 +289,16 @@ contract StakingMonitor is KeeperCompatibleInterface {
         for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
             // the new DAIBalance of each swap participant
             // increases by their share of the totalAmountToSwap
-            s_users[addressesForSwap[idx]].DAIBalance +=
-                (totalDAIFromSwap *
-                    s_users[addressesForSwap[idx]].balanceToSwap) /
-                totalAmountToSwap;
+            s_users[addressesForSwap[idx]].DAIBalance += calculateUserSwapShare(
+                totalDAIFromSwap,
+                s_users[addressesForSwap[idx]].balanceToSwap,
+                totalAmountToSwap
+            );
             emit Swapped(
                 addressesForSwap[idx],
                 block.timestamp,
                 s_users[addressesForSwap[idx]].balanceToSwap,
                 s_users[addressesForSwap[idx]].priceLimit,
-                s_users[addressesForSwap[idx]].percentageToSwap,
                 s_users[addressesForSwap[idx]].DAIBalance,
                 currentPrice
             );
