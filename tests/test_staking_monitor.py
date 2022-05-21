@@ -107,6 +107,54 @@ def test_can_set_order(deploy_staking_monitor_contract):
     )
 
 
+def test_get_user_data(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    deposit_value = Web3.toWei(0.01, "ether")
+    # Act
+    deposit_tx = staking_monitor.deposit(
+        {"from": get_account(), "value": deposit_value}
+    )
+    deposit_tx.wait(1)
+
+    price_limit = 20000
+
+    # percentage to swap is given in percentages, the portion will be calculated in the contract
+    percentage_to_swap = 40
+
+    # Act
+    set_order_tx = staking_monitor.setOrder(
+        price_limit, percentage_to_swap, {"from": get_account()}
+    )
+    set_order_tx.wait(1)
+
+    # Assert
+
+    # returns tuple
+    # from contract:
+    # struct userData {
+    #     bool created;
+    #     bool enoughDepositForSwap;
+    #     uint256 depositBalance;
+    #     uint256 DAIBalance;
+    #     uint256 priceLimit;
+    #     uint256 percentageToSwap;
+    #     uint256 balanceToSwap;
+    #     uint256 previousBalance;
+    # }
+
+    userData = staking_monitor.getUserData({"from": get_account()})
+
+    assert userData[0] == True
+    assert userData[1] == False
+    assert userData[2] == deposit_value
+    assert userData[3] == 0
+    assert userData[4] == price_limit * 100000000
+    assert userData[5] == 40
+    assert userData[6] == 0
+    assert userData[7] == get_account().balance()
+
+
 def test_set_order_if_user_has_not_deposited_reverts(
     deploy_staking_monitor_contract,
 ):

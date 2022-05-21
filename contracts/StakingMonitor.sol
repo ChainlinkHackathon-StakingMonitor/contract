@@ -133,14 +133,19 @@ contract StakingMonitor is KeeperCompatibleInterface {
         emit WithdrawnDAI(msg.sender, _amount);
     }
 
-    /// @notice Gets the calling user main network currency balance
+    /// @notice Gets the calling user's main network currency balance
     function getDepositBalance() external view returns (uint256) {
         return s_users[msg.sender].depositBalance;
     }
 
-    /// @notice Gets the calling user DAI balance
+    /// @notice Gets the calling user's DAI balance
     function getDAIBalance() external view returns (uint256) {
         return s_users[msg.sender].DAIBalance;
+    }
+
+    /// @notice Gets the calling user's data
+    function getUserData() external view returns (userData memory) {
+        return s_users[msg.sender];
     }
 
     /** @notice Allows users to set the minimum price at which a swap of a portion of their deposit main network currency should take place. 
