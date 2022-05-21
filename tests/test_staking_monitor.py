@@ -154,6 +154,11 @@ def test_get_user_data(deploy_staking_monitor_contract):
     assert userData[6] == 0
     assert userData[7] == get_account().balance()
 
+    # when user hasn't deposited yet
+    userData = staking_monitor.getUserData({"from": get_account(8)})
+
+    assert userData[0] == False
+
 
 def test_set_order_if_user_has_not_deposited_reverts(
     deploy_staking_monitor_contract,
