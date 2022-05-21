@@ -17,7 +17,7 @@ error StakeMonitor__UserHasntDepositedETH();
 contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
 
     struct userInfo {
-    uint256 liveBalance; 
+    uint256 depositAmount; 
     uint256 DAIBalance; 
     uint256 priceLimit;
     uint256 balanceToSpend;
@@ -56,26 +56,25 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
     /// @notice add the deposit amount to the latestBalance info 
     function deposit() external payable {
         // when user deposits the first time, we set last balance to their current balance...
-        // not sure that's the best logic but let's see
-        if (userInfos[msg.sender].liveBalance == 0) {
+        if (userInfos[msg.sender].Balance == 0) {
             userInfos[msg.sender].latestBalance = msg.sender.balance;
         }
 
         //TODO: somehow check if address is already watched
         s_watchList.push(msg.sender);
-        userInfos[msg.sender].liveBalance += msg.value; 
+        userInfos[msg.sender].depositAmount += msg.value; 
         emit Deposited(msg.sender);
     }
 
     /// @notice get the balance of msg.sender 
     function getBalance() external view returns (uint256) {
-        return userInfos[msg.sender].liveBalance;
+        return userInfos[msg.sender].depositAmount;
     }
 
     /// @notice user sets priceLimit 
     function setPriceLimit(uint256 _priceLimit) external {
         // a user cannot set a price limit if they haven't deposited some eth
-        if (userInfos[msg.sender].liveBalance == 0) {
+        if (userInfos[msg.sender].depositAmount == 0) {
             revert StakeMonitor__UserHasntDepositedETH();
         }
         // set lowest price limit across all users, to trigger upkeep if the lowest price limit is reached
@@ -106,7 +105,7 @@ contract StakingMonitor is KeeperCompatibleInterface, ReEntrancyGuard {
     /// @notice withdraw a specified amount 
     function withdraw(uint256 _amount) public {
         require(getBalanceToSpend == true) ;
-        userInfos[msg.sender].liveBalance =- _amount; 
+        userInfos[msg.sender].depositAmount =- _amount; 
         emit Withdrawn(msg.sender); 
     }
 
