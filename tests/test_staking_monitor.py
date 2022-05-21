@@ -174,6 +174,30 @@ def test_set_order_if_user_has_not_deposited_reverts(
         set_order_tx.wait(1)
 
 
+def test_calculate_user_balance_to_swap(deploy_staking_monitor_contract):
+    current_balance = Web3.toWei(0.05, "ether")
+    previous_balance = Web3.toWei(0.01, "ether")
+    order_percentage_to_swap = 45
+    staking_monitor = deploy_staking_monitor_contract
+    result = staking_monitor.calculateUserBalanceToSwap(
+        current_balance, previous_balance, order_percentage_to_swap
+    )
+    assert (
+        result == (current_balance - previous_balance) * order_percentage_to_swap / 100
+    )
+
+
+def test_calculate_user_swap_share(deploy_staking_monitor_contract):
+    total_token = Web3.toWei(1, "ether")
+    user_balance_to_swap = Web3.toWei(0.003, "ether")
+    total_amount = Web3.toWei(0.05, "ether")
+    staking_monitor = deploy_staking_monitor_contract
+    result = staking_monitor.calculateUserSwapShare(
+        total_token, user_balance_to_swap, total_amount
+    )
+    assert result == total_token * user_balance_to_swap / total_amount
+
+
 def test_set_balances_to_swap(deploy_staking_monitor_contract):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
