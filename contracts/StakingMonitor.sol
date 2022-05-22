@@ -165,26 +165,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
         s_users[msg.sender].priceLimit = _priceLimit * 100000000;
     }
 
-    /// @notice Swaps ETH for DAI using Uniswap V2, and returns the amount of DAI that resulted from the swap.
-    function swapEthForDAI(uint256 amount) public returns (uint256) {
-        address[] memory path = new address[](2);
-        path[0] = uniswap.WETH();
-        path[1] = address(DAIToken);
-        uint[] memory tokenAmount_;
-
-        // make the swap
-        tokenAmount_ = uniswap.swapExactETHForTokens{value: amount}(
-            0,
-            path,
-            address(this),
-            block.timestamp
-        );
-        uint256 outputTokenCount = uint256(
-            tokenAmount_[tokenAmount_.length - 1]
-        );
-        return outputTokenCount;
-    }
-
     /// @notice Utility pure function that calculates the balance we should swap for a user
     /// @dev makes use of the ABDKMath64x64 library
     function calculateUserBalanceToSwap(
@@ -263,6 +243,26 @@ contract StakingMonitor is KeeperCompatibleInterface {
         }
     }
 
+    /// @notice Swaps ETH for DAI using Uniswap V2, and returns the amount of DAI that resulted from the swap.
+    function swapEthForDAI(uint256 amount) public returns (uint256) {
+        address[] memory path = new address[](2);
+        path[0] = uniswap.WETH();
+        path[1] = address(DAIToken);
+        uint[] memory tokenAmount_;
+
+        // make the swap
+        tokenAmount_ = uniswap.swapExactETHForTokens{value: amount}(
+            0,
+            path,
+            address(this),
+            block.timestamp
+        );
+        uint256 outputTokenCount = uint256(
+            tokenAmount_[tokenAmount_.length - 1]
+        );
+        return outputTokenCount;
+    }
+
     /** @notice The second function called by the upkeep, which checks which users have required balances,
     as well as an order where the conditions for a swap are met.
      */
@@ -271,7 +271,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         uint256 currentPrice = getPrice();
 
         address[] memory addressesForSwap = new address[](s_watchList.length);
-        uint256[] memory totalAmountToSwap = new uint256[](1);
+        uint256[] memory totalAmountToSwap_TotalDAIFromSwap = new uint256[](2);
         uint256[] memory totalDAIFromSwap = new uint256[](1);
 
         // we build a list of the addresses that will be part of the swap
@@ -285,7 +285,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
             ) {
                 //we count that user in for this swap
                 addressesForSwap[idx] = (payable(s_watchList[idx]));
-                totalAmountToSwap[0] += s_users[s_watchList[idx]].balanceToSwap;
+                totalAmountToSwap_TotalDAIFromSwap[0] += s_users[
+                    s_watchList[idx]
+                ].balanceToSwap;
             } else {
                 // if the address can't swap, we set it to the null address in addressesForSwap
                 addressesForSwap[
@@ -298,9 +300,11 @@ contract StakingMonitor is KeeperCompatibleInterface {
             addressesForSwap.length
         );
 
-        if (totalAmountToSwap[0] > 0) {
+        if (totalAmountToSwap_TotalDAIFromSwap[0] > 0) {
             // we perform the swap
-            totalDAIFromSwap[0] = swapEthForDAI(totalAmountToSwap[0]);
+            totalAmountToSwap_TotalDAIFromSwap[1] = swapEthForDAI(
+                totalAmountToSwap_TotalDAIFromSwap[0]
+            );
             // we distribute the DAI balances among participants
             for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
                 if (
@@ -310,9 +314,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
                     // the new DAIBalance of each swap participant
                     // increases by their share of the totalAmountToSwap
                     receivedDAIFromSwapPerUser[idx] = calculateUserSwapShare(
-                        totalDAIFromSwap[0],
+                        totalAmountToSwap_TotalDAIFromSwap[1],
                         s_users[addressesForSwap[idx]].balanceToSwap,
-                        totalAmountToSwap[0]
+                        totalAmountToSwap_TotalDAIFromSwap[0]
                     );
                     s_users[addressesForSwap[idx]]
                         .DAIBalance += receivedDAIFromSwapPerUser[idx];
@@ -330,9 +334,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
                         addressesForSwap[idx]
                     ].balanceToSwap;
 
-                    // we reinitialise the balanceToSwap for the user,
-                    // the addressesForSwap list, and
-                    // the totalAmountToSwap
+                    // we reinitialise the balanceToSwap for the user
                     s_users[addressesForSwap[idx]].balanceToSwap = 0;
                 }
             }
