@@ -276,6 +276,9 @@ contract StakingMonitor is KeeperCompatibleInterface {
     function checkConditionsAndPerformSwap() public {
         uint256 currentPrice = getPrice();
 
+        address[] memory addressesForSwap = new address[](s_watchList.length);
+        uint256[] memory totalAmountToSwap = new uint256[](1);
+
         // we build a list of the addresses that will be part of the swap
         // (the ones where conditions for swap are satisfied). We store that list in the array below.
         for (uint256 idx = 0; idx < s_watchList.length; idx++) {
@@ -286,8 +289,12 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 currentPrice > s_users[s_watchList[idx]].priceLimit
             ) {
                 //we count that user in for this swap
-                addressesForSwap.push(payable(s_watchList[idx]));
-                totalAmountToSwap += s_users[s_watchList[idx]].balanceToSwap;
+                addressesForSwap[idx] = (payable(s_watchList[idx]));
+                totalAmountToSwap[0] += s_users[s_watchList[idx]].balanceToSwap;
+            } else {
+                addressesForSwap[
+                    idx
+                ] = 0x000000000000000000000000000000000000dEaD;
             }
         }
 
@@ -295,41 +302,44 @@ contract StakingMonitor is KeeperCompatibleInterface {
             addressesForSwap.length
         );
 
-        if (totalAmountToSwap > 0) {
+        if (totalAmountToSwap[0] > 0) {
             // we perform the swap
-            totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
+            totalDAIFromSwap = swapEthForDAI(totalAmountToSwap[0]);
             // we distribute the DAI balances among participants
             for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
-                // the new DAIBalance of each swap participant
-                // increases by their share of the totalAmountToSwap
-                receivedDAIFromSwapPerUser[idx] = calculateUserSwapShare(
-                    totalDAIFromSwap,
-                    s_users[addressesForSwap[idx]].balanceToSwap,
-                    totalAmountToSwap
-                );
-                s_users[addressesForSwap[idx]]
-                    .DAIBalance += receivedDAIFromSwapPerUser[idx];
-                emit Swapped(
-                    addressesForSwap[idx],
-                    block.timestamp,
-                    s_users[addressesForSwap[idx]].balanceToSwap,
-                    s_users[addressesForSwap[idx]].priceLimit,
-                    receivedDAIFromSwapPerUser[idx],
-                    currentPrice
-                );
-                // we substract the balanceToSwap from the user's
-                // depositBalance
-                s_users[addressesForSwap[idx]].depositBalance -= s_users[
-                    addressesForSwap[idx]
-                ].balanceToSwap;
+                if (
+                    addressesForSwap[idx] !=
+                    0x000000000000000000000000000000000000dEaD
+                ) {
+                    // the new DAIBalance of each swap participant
+                    // increases by their share of the totalAmountToSwap
+                    receivedDAIFromSwapPerUser[idx] = calculateUserSwapShare(
+                        totalDAIFromSwap,
+                        s_users[addressesForSwap[idx]].balanceToSwap,
+                        totalAmountToSwap[0]
+                    );
+                    s_users[addressesForSwap[idx]]
+                        .DAIBalance += receivedDAIFromSwapPerUser[idx];
+                    emit Swapped(
+                        addressesForSwap[idx],
+                        block.timestamp,
+                        s_users[addressesForSwap[idx]].balanceToSwap,
+                        s_users[addressesForSwap[idx]].priceLimit,
+                        receivedDAIFromSwapPerUser[idx],
+                        currentPrice
+                    );
+                    // we substract the balanceToSwap from the user's
+                    // depositBalance
+                    s_users[addressesForSwap[idx]].depositBalance -= s_users[
+                        addressesForSwap[idx]
+                    ].balanceToSwap;
 
-                // we reinitialise the balanceToSwap for the user,
-                // the addressesForSwap list, and
-                // the totalAmountToSwap
-                s_users[addressesForSwap[idx]].balanceToSwap = 0;
+                    // we reinitialise the balanceToSwap for the user,
+                    // the addressesForSwap list, and
+                    // the totalAmountToSwap
+                    s_users[addressesForSwap[idx]].balanceToSwap = 0;
+                }
             }
-            delete addressesForSwap;
-            totalAmountToSwap = 0;
         }
     }
 
