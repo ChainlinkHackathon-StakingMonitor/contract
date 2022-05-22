@@ -138,6 +138,7 @@ def test_get_user_data(deploy_staking_monitor_contract):
     #     bool enoughDepositForSwap;
     #     uint256 depositBalance;
     #     uint256 DAIBalance;
+    #     uint256 latestDAIReceivedFromSwap;
     #     uint256 priceLimit;
     #     uint256 percentageToSwap;
     #     uint256 balanceToSwap;
@@ -150,10 +151,11 @@ def test_get_user_data(deploy_staking_monitor_contract):
     assert userData[1] == False
     assert userData[2] == deposit_value
     assert userData[3] == 0
-    assert userData[4] == price_limit * 100000000
-    assert userData[5] == 40
-    assert userData[6] == 0
-    assert userData[7] == get_account().balance()
+    assert userData[4] == 0
+    assert userData[5] == price_limit * 100000000
+    assert userData[6] == 40
+    assert userData[7] == 0
+    assert userData[8] == get_account().balance()
 
     # when user hasn't deposited yet
     userData = staking_monitor.getUserData({"from": get_account(8)})
@@ -291,7 +293,7 @@ def test_swap_eth_for_dai(deploy_staking_monitor_contract):
     dai_from_swap = staking_monitor.swapEthForDAI(
         amount_to_swap, {"from": get_account()}
     )
-    assert dai_from_swap == 23
+    assert dai_from_swap == 230000000000000
 
 
 def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):

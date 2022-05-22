@@ -13,12 +13,14 @@ error StakingMonitor__TransferFailed();
 error StakingMonitor__UserHasntDepositedETH();
 error StakingMonitor__NotEnoughETHInUsersBalance();
 error StakingMonitor_NotEnoughDAIInUsersBalance();
+error StakingMonitor_UserDoesntHaveAccount();
 
 struct userData {
     bool created;
     bool enoughDepositForSwap;
     uint256 depositBalance;
     uint256 DAIBalance;
+    uint256 latestDAIReceivedFromSwap;
     uint256 priceLimit;
     uint256 percentageToSwap;
     uint256 balanceToSwap;
@@ -109,6 +111,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
     /// @notice Allows users to withdraw an amount of their main network currency balance.
     /// @dev  _amount is removed from their internal contract balance.
     function withdrawETH(uint256 _amount) external {
+        if (!s_users[msg.sender].created) {
+            revert StakingMonitor_UserDoesntHaveAccount();
+        }
+
         if (_amount > s_users[msg.sender].depositBalance) {
             revert StakingMonitor__NotEnoughETHInUsersBalance();
         }
@@ -124,6 +130,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
     /// @notice Allows users to withdraw an amount of their DAI balance.
     /// @dev  _amount is removed from their internal contract balance.
     function withdrawDAI(uint256 _amount) external {
+        if (!s_users[msg.sender].created) {
+            revert StakingMonitor_UserDoesntHaveAccount();
+        }
+
         if (_amount > s_users[msg.sender].DAIBalance) {
             revert StakingMonitor_NotEnoughDAIInUsersBalance();
         }
@@ -290,17 +300,19 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 // the new DAIBalance of each swap participant
                 // increases by their share of the totalAmountToSwap
                 s_users[addressesForSwap[idx]]
-                    .DAIBalance += calculateUserSwapShare(
+                    .latestDAIReceivedFromSwap = calculateUserSwapShare(
                     totalDAIFromSwap,
                     s_users[addressesForSwap[idx]].balanceToSwap,
                     totalAmountToSwap
                 );
+                s_users[addressesForSwap[idx]].DAIBalance += s_users[addressesForSwap[idx]]
+                    .latestDAIReceivedFromSwap;
                 emit Swapped(
                     addressesForSwap[idx],
                     block.timestamp,
                     s_users[addressesForSwap[idx]].balanceToSwap,
                     s_users[addressesForSwap[idx]].priceLimit,
-                    s_users[addressesForSwap[idx]].DAIBalance,
+                    s_users[addressesForSwap[idx]].latestDAIReceivedFromSwap,
                     currentPrice
                 );
                 // we substract the balanceToSwap from the user's
