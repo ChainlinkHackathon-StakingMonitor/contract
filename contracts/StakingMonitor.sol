@@ -20,7 +20,6 @@ struct userData {
     bool enoughDepositForSwap;
     uint256 depositBalance;
     uint256 DAIBalance;
-    uint256 latestDAIReceivedFromSwap;
     uint256 priceLimit;
     uint256 percentageToSwap;
     uint256 balanceToSwap;
@@ -292,6 +291,10 @@ contract StakingMonitor is KeeperCompatibleInterface {
             }
         }
 
+        uint[] memory receivedDAIFromSwapPerUser = new uint[](
+            addressesForSwap.length
+        );
+
         if (totalAmountToSwap > 0) {
             // we perform the swap
             totalDAIFromSwap = swapEthForDAI(totalAmountToSwap);
@@ -299,20 +302,19 @@ contract StakingMonitor is KeeperCompatibleInterface {
             for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
                 // the new DAIBalance of each swap participant
                 // increases by their share of the totalAmountToSwap
-                s_users[addressesForSwap[idx]]
-                    .latestDAIReceivedFromSwap = calculateUserSwapShare(
+                receivedDAIFromSwapPerUser[idx] = calculateUserSwapShare(
                     totalDAIFromSwap,
                     s_users[addressesForSwap[idx]].balanceToSwap,
                     totalAmountToSwap
                 );
-                s_users[addressesForSwap[idx]].DAIBalance += s_users[addressesForSwap[idx]]
-                    .latestDAIReceivedFromSwap;
+                s_users[addressesForSwap[idx]]
+                    .DAIBalance += receivedDAIFromSwapPerUser[idx];
                 emit Swapped(
                     addressesForSwap[idx],
                     block.timestamp,
                     s_users[addressesForSwap[idx]].balanceToSwap,
                     s_users[addressesForSwap[idx]].priceLimit,
-                    s_users[addressesForSwap[idx]].latestDAIReceivedFromSwap,
+                    receivedDAIFromSwapPerUser[idx],
                     currentPrice
                 );
                 // we substract the balanceToSwap from the user's
