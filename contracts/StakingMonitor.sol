@@ -63,12 +63,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
     mapping(address => userData) public s_users;
     address[] public s_watchList;
 
-    // these storage variables are used to store values needed to perform
-    // and distribute the results of the swap.
-    address[] public addressesForSwap;
-    uint256 public totalAmountToSwap;
-    uint256 public totalDAIFromSwap;
-
     constructor(
         address _priceFeed,
         address _DAIToken,
@@ -278,6 +272,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
 
         address[] memory addressesForSwap = new address[](s_watchList.length);
         uint256[] memory totalAmountToSwap = new uint256[](1);
+        uint256[] memory totalDAIFromSwap = new uint256[](1);
 
         // we build a list of the addresses that will be part of the swap
         // (the ones where conditions for swap are satisfied). We store that list in the array below.
@@ -292,6 +287,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
                 addressesForSwap[idx] = (payable(s_watchList[idx]));
                 totalAmountToSwap[0] += s_users[s_watchList[idx]].balanceToSwap;
             } else {
+                // if the address can't swap, we set it to the null address in addressesForSwap
                 addressesForSwap[
                     idx
                 ] = 0x000000000000000000000000000000000000dEaD;
@@ -304,7 +300,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
 
         if (totalAmountToSwap[0] > 0) {
             // we perform the swap
-            totalDAIFromSwap = swapEthForDAI(totalAmountToSwap[0]);
+            totalDAIFromSwap[0] = swapEthForDAI(totalAmountToSwap[0]);
             // we distribute the DAI balances among participants
             for (uint256 idx = 0; idx < addressesForSwap.length; idx++) {
                 if (
@@ -314,7 +310,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
                     // the new DAIBalance of each swap participant
                     // increases by their share of the totalAmountToSwap
                     receivedDAIFromSwapPerUser[idx] = calculateUserSwapShare(
-                        totalDAIFromSwap,
+                        totalDAIFromSwap[0],
                         s_users[addressesForSwap[idx]].balanceToSwap,
                         totalAmountToSwap[0]
                     );
