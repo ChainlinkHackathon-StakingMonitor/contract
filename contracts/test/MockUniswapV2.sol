@@ -10,7 +10,8 @@ contract MockUniswapV2 is IUniswapV2 {
         address to,
         uint deadline
     ) external payable returns (uint[] memory amounts) {
-        amounts[0] = 2000000000000000000000000000;
+        amounts[0] = amountOutMin;
+        amounts[1] = 2000000000000000000000000000;
         return amounts;
     }
 

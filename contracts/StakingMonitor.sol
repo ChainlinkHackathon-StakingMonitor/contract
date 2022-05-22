@@ -317,7 +317,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
             delete addressesForSwap;
             totalAmountToSwap = 0;
         }
-        // for testing
     }
 
     /** @notice This function is used by the upkeep network to check if performUpkeep should be executed.

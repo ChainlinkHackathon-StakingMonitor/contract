@@ -1,5 +1,6 @@
 from brownie import exceptions, StakingMonitor, network
 import pytest
+import math
 
 from scripts.helpful_scripts import (
     get_account,
@@ -284,6 +285,15 @@ def test_set_balances_to_swap_accrues(deploy_staking_monitor_contract):
     ) + (second_reward_amount * percentage_to_swap / 100)
 
 
+def test_swap_eth_for_dai(deploy_staking_monitor_contract):
+    amount_to_swap = Web3.toWei(0.02, "ether")
+    staking_monitor = deploy_staking_monitor_contract
+    dai_from_swap = staking_monitor.swapEthForDAI(
+        amount_to_swap, {"from": get_account()}
+    )
+    assert dai_from_swap == 23
+
+
 def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
@@ -334,14 +344,28 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
 
     assert watch_list_entry_for_first_user == first_user_account.address
     assert watch_list_entry_for_second_user == second_user_account.address
+
+    first_user_balance_to_swap = staking_monitor.s_users(first_user_account.address)[
+        "balanceToSwap"
+    ]
+    # 1200000000000000
+
+    second_user_balance_to_swap = staking_monitor.s_users(second_user_account.address)[
+        "balanceToSwap"
+    ]
+
+    # 3300000000000000
+
     assert (
-        staking_monitor.s_users(first_user_account.address)["balanceToSwap"]
+        first_user_balance_to_swap
         == first_user_reward_amount * first_user_percentage_to_swap / 100
     )
     assert (
-        staking_monitor.s_users(second_user_account.address)["balanceToSwap"]
+        second_user_balance_to_swap
         == second_user_reward_amount * second_user_percentage_to_swap / 100
     )
+
+    total_amount_to_swap = first_user_balance_to_swap + second_user_balance_to_swap
 
     # Act
     tx = staking_monitor.checkConditionsAndPerformSwap({"from": get_account()})
@@ -352,14 +376,27 @@ def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
         staking_monitor.s_users(first_user_account.address)["priceLimit"]
         < current_price
     )
-    assert (
-        staking_monitor.s_users(first_user_account.address)["DAIBalance"]
-        == 13333333333333333
-    )
-    assert (
-        staking_monitor.s_users(second_user_account.address)["DAIBalance"]
-        == 36666666666666666
-    )
+
+    first_user_dai_distributed = staking_monitor.s_users(first_user_account.address)[
+        "DAIBalance"
+    ]
+
+    second_user_dai_distributed = staking_monitor.s_users(second_user_account.address)[
+        "DAIBalance"
+    ]
+
+    total_dai_distributed = first_user_dai_distributed + second_user_dai_distributed
+
+    what_first_user_dai_share_should_be = (
+        total_dai_distributed * first_user_balance_to_swap
+    ) / total_amount_to_swap
+
+    what_second_user_dai_share_should_be = (
+        total_dai_distributed * second_user_balance_to_swap
+    ) / total_amount_to_swap
+
+    assert first_user_dai_distributed == round(what_first_user_dai_share_should_be)
+    assert second_user_dai_distributed == round(what_second_user_dai_share_should_be)
     assert staking_monitor.s_users(first_user_account.address)["balanceToSwap"] == 0
 
 
