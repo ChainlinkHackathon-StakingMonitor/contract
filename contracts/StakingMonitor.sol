@@ -38,6 +38,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
     using ABDKMath64x64 for int128;
 
     event Deposited(address indexed user, uint256 _amount);
+    event OrderSet(address indexed user);
     event WithdrawnETH(address indexed user, uint256 _amount);
     event WithdrawnDAI(address indexed user, uint256 _amount);
     event Swapped(
@@ -48,7 +49,6 @@ contract StakingMonitor is KeeperCompatibleInterface {
         uint256 _DAIReceived,
         uint256 _ETHPrice
     );
-
     event NotEnoughDepositedEthForSwap(
         address indexed _address,
         uint256 _requiredDepositAmount
@@ -176,6 +176,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
         s_users[msg.sender].percentageToSwap = _percentageToSwap;
         // priceLimit needs to have same units as what is returned by getPrice
         s_users[msg.sender].priceLimit = _priceLimit * 100000000;
+        emit OrderSet(msg.sender);
     }
 
     /**
