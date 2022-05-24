@@ -102,6 +102,7 @@ contract StakingMonitor is KeeperCompatibleInterface {
             msg.value;
         // we update previousBalance for the user.
         s_users[msg.sender].previousBalance = msg.sender.balance;
+        s_users[msg.sender].enoughDepositForSwap = true;
         emit Deposited(msg.sender, msg.value);
     }
 
