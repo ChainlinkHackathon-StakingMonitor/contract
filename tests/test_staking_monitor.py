@@ -82,6 +82,38 @@ def test_withdraw_eth(deploy_staking_monitor_contract):
     assert get_account().balance == account_original_balance
 
 
+def test_withdraw_eth(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    value = Web3.toWei(0.01, "ether")
+    account_original_balance = get_account().balance
+    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx.wait(1)
+
+    # Act
+    withdrawal_tx = staking_monitor.withdrawETH((value / 2), {"from": get_account()})
+    withdrawal_tx.wait(1)
+
+    # Assert
+    assert staking_monitor.s_users(get_account().address)["depositBalance"] == value / 2
+    assert get_account().balance == account_original_balance
+
+
+def test_withdraw_eth_reverts_if_not_enough_balance(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    value = Web3.toWei(0.01, "ether")
+    account_original_balance = get_account().balance
+    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx.wait(1)
+
+    with pytest.raises(exceptions.VirtualMachineError):
+        withdrawal_tx = staking_monitor.withdrawETH(
+            (value * 2), {"from": get_account()}
+        )
+        withdrawal_tx.wait(1)  # Act
+
+
 def test_get_deposit_balance(deploy_staking_monitor_contract):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
