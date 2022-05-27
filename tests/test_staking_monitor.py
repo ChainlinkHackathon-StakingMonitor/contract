@@ -237,6 +237,9 @@ def test_calculate_user_balance_to_swap(deploy_staking_monitor_contract):
     )
 
 
+# we would like to use ABDK Math library here, but for very strange reason using it on kovan returns an error.
+# if you think you can help us, please have a look at our stackexchange question below!
+# https://ethereum.stackexchange.com/questions/128723/abdkmath64x64-function-works-in-local-brownie-tests-and-remix-kovan-deployment
 def test_calculate_user_swap_share(deploy_staking_monitor_contract):
     total_token = Web3.toWei(1, "ether")
     user_balance_to_swap = Web3.toWei(0.003, "ether")
