@@ -11,7 +11,7 @@ def deploy_staking_monitor():
     dai_token = get_contract("dai_token").address
     uniswap_v2 = get_contract("uniswap_v2").address
     # 5 minutes interval
-    interval = 4 * 60
+    interval = 15 * 60
     return StakingMonitor.deploy(
         eth_usd_price_feed_address,
         dai_token,

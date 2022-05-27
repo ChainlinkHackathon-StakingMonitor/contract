@@ -65,6 +65,23 @@ def test_deposit(deploy_staking_monitor_contract):
     assert staking_monitor.s_watchList(1) == get_account(1).address
 
 
+def test_withdraw_eth(deploy_staking_monitor_contract):
+    # Arrange
+    staking_monitor = deploy_staking_monitor_contract
+    value = Web3.toWei(0.01, "ether")
+    account_original_balance = get_account().balance
+    deposit_tx = staking_monitor.deposit({"from": get_account(), "value": value})
+    deposit_tx.wait(1)
+
+    # Act
+    withdrawal_tx = staking_monitor.withdrawETH((value / 2), {"from": get_account()})
+    withdrawal_tx.wait(1)
+
+    # Assert
+    assert staking_monitor.s_users(get_account().address)["depositBalance"] == value / 2
+    assert get_account().balance == account_original_balance
+
+
 def test_get_deposit_balance(deploy_staking_monitor_contract):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
@@ -147,7 +164,7 @@ def test_get_user_data(deploy_staking_monitor_contract):
     userData = staking_monitor.getUserData({"from": get_account()})
 
     assert userData[0] == True
-    assert userData[1] == False
+    assert userData[1] == True
     assert userData[2] == deposit_value
     assert userData[3] == 0
     assert userData[4] == price_limit * 100000000
@@ -285,6 +302,8 @@ def test_set_balances_to_swap_accrues(deploy_staking_monitor_contract):
     ) + (second_reward_amount * percentage_to_swap / 100)
 
 
+# this test fails currently, because the uniswapv2 mock seems to have an issue with it - mocking what it returns in the contract however makes the whole test pass...
+# please see our stackexchange question here for more info: https://ethereum.stackexchange.com/questions/128720/mocking-and-testing-uniswapv2s-swapexactethfortokens-in-brownie-virtualmachine
 def test_swap_eth_for_dai(deploy_staking_monitor_contract):
     amount_to_swap = Web3.toWei(0.02, "ether")
     staking_monitor = deploy_staking_monitor_contract
@@ -294,6 +313,8 @@ def test_swap_eth_for_dai(deploy_staking_monitor_contract):
     assert dai_from_swap == 230000000000000
 
 
+# this test fails currently, because the uniswapv2 mock seems to have an issue with it - mocking what it returns in the contract however makes the whole test pass...
+# please see our stackexchange question here for more info: https://ethereum.stackexchange.com/questions/128720/mocking-and-testing-uniswapv2s-swapexactethfortokens-in-brownie-virtualmachine
 def test_check_conditions_and_perform_swap(deploy_staking_monitor_contract):
     # Arrange
     staking_monitor = deploy_staking_monitor_contract
